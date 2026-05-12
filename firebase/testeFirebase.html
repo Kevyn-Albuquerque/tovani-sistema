@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste Firebase</title>
+</head>
+<body>
+
+<h1>Teste Firebase</h1>
+
+<script type="module">
+
+import { db } from './firebaseConfig.js';
+
+import {
+  collection,
+  addDoc
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+async function testarFirebase() {
+
+  try {
+
+    await addDoc(collection(db, "teste"), {
+      nome: "Tovani Sistema",
+      status: "Firebase funcionando"
+    });
+
+    console.log("Firebase conectado!");
+
+    alert("Firebase funcionando!");
+
+  } catch (erro) {
+
+    console.error(erro);
+
+    alert("Erro Firebase");
+
+  }
+
+}
+
+testarFirebase();
+
+</script>
+
+</body>
+</html>

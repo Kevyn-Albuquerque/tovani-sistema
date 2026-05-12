@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Entrada e Saída</title>
+
+  <link rel="stylesheet" href="style.css"/>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+
+    .btn-logout {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.3s;
+      margin-right: 12px;
+    }
+
+    .btn-logout:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <header class="topbar">
+
+    <div class="logo-area">
+
+      <h1>TOVANI</h1>
+
+      <span>CONSULTORIA</span>
+
+    </div>
+
+    <div class="usuario-area">
+
+      <div class="usuario-info">
+
+        <strong>Administrador</strong>
+
+        <small>Entrada e Saída</small>
+
+      </div>
+
+      <button
+        id="btnLogout"
+        class="btn-logout"
+      >
+        Sair
+      </button>
+
+      <div class="usuario-avatar">
+        T
+      </div>
+
+    </div>
+
+  </header>
+
+  <main class="container">
+
+    <section class="hero-es">
+
+      <h2>Entrada e Saída</h2>
+
+      <p>
+        Controle financeiro operacional, lançamentos manuais, custos fixos e projeção mensal.
+      </p>
+
+    </section>
+
+    <div class="menu">
+
+      <a href="../Dashboard/dashboard.html">
+        Dashboard
+      </a>
+
+      <a href="../Cadastro/cadastro.html">
+        Cadastro
+      </a>
+
+      <a href="../Clientes/clientes.html">
+        Clientes
+      </a>
+
+    </div>
+
+    <section class="resultado">
+
+      <h2>Filtro Mensal</h2>
+
+      <div class="filtros-relatorio">
+
+        <div>
+
+          <label>Mês de Referência</label>
+
+          <input
+            type="month"
+            id="filtroMes"
+          />
+
+        </div>
+
+        <div class="grupo-botao-relatorio">
+
+          <button id="btnFiltrarMes">
+            Aplicar Filtro
+          </button>
+
+        </div>
+
+        <div class="grupo-botao-relatorio">
+
+          <button
+            id="btnLimparFiltro"
+            class="botao-cinza"
+          >
+            Limpar Filtro
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <section class="cards-dashboard">
+
+      <div class="card-dashboard entrada">
+
+        <h3>Total Entradas</h3>
+
+        <p id="totalEntradas">
+          R$ 0,00
+        </p>
+
+      </div>
+
+      <div class="card-dashboard saida">
+
+        <h3>Total Saídas</h3>
+
+        <p id="totalSaidas">
+          R$ 0,00
+        </p>
+
+      </div>
+
+      <div class="card-dashboard saldo">
+
+        <h3>Saldo Final</h3>
+
+        <p id="saldoFinal">
+          R$ 0,00
+        </p>
+
+      </div>
+
+    </section>
+
+    <section class="resultado">
+
+      <h2>Gráfico Financeiro</h2>
+
+      <div class="grafico-container">
+
+        <canvas id="graficoFinanceiro"></canvas>
+
+      </div>
+
+    </section>
+
+    <section class="resultado">
+
+      <h2>Novo Registro</h2>
+
+      <div class="tipo-registro">
+
+        <button
+          type="button"
+          id="btnTipoLancamento"
+          class="tipo-ativo"
+        >
+          Lançamento
+        </button>
+
+        <button
+          type="button"
+          id="btnTipoCustoFixo"
+        >
+          Custo Fixo
+        </button>
+
+        <button
+          type="button"
+          id="btnTipoConsultoria"
+        >
+          Consultoria Parcelada
+        </button>
+
+      </div>
+
+      <form id="formRegistro">
+
+        <input
+          type="hidden"
+          id="modoRegistro"
+          value="lancamento"
+        />
+
+        <div id="campoTipo">
+
+          <label>Tipo</label>
+
+          <select id="tipo">
+
+            <option value="">
+              Selecione
+            </option>
+
+            <option value="entrada">
+              Entrada
+            </option>
+
+            <option value="saida">
+              Saída
+            </option>
+
+          </select>
+
+        </div>
+
+        <div>
+
+          <label>Descrição / Nome</label>
+
+          <input
+            type="text"
+            id="descricao"
+            required
+            placeholder="Ex: aluguel, comissão, internet..."
+          />
+
+        </div>
+
+        <div
+          id="campoClienteConsultoria"
+          style="display: none;"
+        >
+
+          <label>Cliente</label>
+
+          <input
+            type="text"
+            id="clienteConsultoria"
+            placeholder="Nome do cliente"
+          />
+
+        </div>
+
+        <div>
+
+          <label>Categoria</label>
+
+          <select id="categoria" required>
+
+            <option value="">
+              Selecione
+            </option>
+
+            <option value="Comissão">
+              Comissão
+            </option>
+
+            <option value="Consultoria">
+              Consultoria
+            </option>
+
+            <option value="Venda">
+              Venda
+            </option>
+
+            <option value="Extra">
+              Extra
+            </option>
+
+            <option value="Funcionários">
+              Funcionários
+            </option>
+
+            <option value="Marketing">
+              Marketing
+            </option>
+
+            <option value="Escritório">
+              Escritório
+            </option>
+
+            <option value="Plataforma">
+              Plataforma
+            </option>
+
+            <option value="Tráfego">
+              Tráfego
+            </option>
+
+            <option value="Administrativo">
+              Administrativo
+            </option>
+
+            <option value="Impostos">
+              Impostos
+            </option>
+
+            <option value="Outros">
+              Outros
+            </option>
+
+          </select>
+
+        </div>
+
+        <div>
+
+          <label>Valor</label>
+
+          <input
+            type="number"
+            id="valor"
+            min="0"
+            step="0.01"
+            required
+          />
+
+        </div>
+
+        <div
+          id="campoValorParcelaConsultoria"
+          style="display: none;"
+        >
+
+          <label>Valor da Parcela</label>
+
+          <input
+            type="number"
+            id="valorParcelaConsultoria"
+            min="0"
+            step="0.01"
+            placeholder="Ex: 2000"
+          />
+
+        </div>
+
+        <div
+          id="campoParcelasConsultoria"
+          style="display: none;"
+        >
+
+          <label>Quantidade de Parcelas</label>
+
+          <input
+            type="number"
+            id="quantidadeParcelas"
+            min="1"
+            placeholder="Ex: 24"
+          />
+
+        </div>
+
+        <div id="campoDataLancamento">
+
+          <label>Data</label>
+
+          <input
+            type="date"
+            id="data"
+          />
+
+        </div>
+
+        <div
+          id="campoDataPrimeiraParcela"
+          style="display: none;"
+        >
+
+          <label>Data da Primeira Parcela</label>
+
+          <input
+            type="date"
+            id="dataPrimeiraParcela"
+          />
+
+        </div>
+
+        <div id="campoDiaVencimento" class="campo-fixo">
+
+          <label>Dia de Vencimento</label>
+
+          <input
+            type="number"
+            id="diaVencimento"
+            min="1"
+            max="31"
+          />
+
+        </div>
+
+        <div id="campoDataInicio" class="campo-fixo">
+
+          <label>Data de Início</label>
+
+          <input
+            type="date"
+            id="dataInicio"
+          />
+
+        </div>
+
+        <div id="campoDataFim" class="campo-fixo">
+
+          <label>Data de Encerramento</label>
+
+          <input
+            type="date"
+            id="dataFim"
+          />
+
+        </div>
+
+        <div id="campoStatus" class="campo-fixo">
+
+          <label>Status</label>
+
+          <select id="status">
+
+            <option value="ativo">
+              Ativo
+            </option>
+
+            <option value="inativo">
+              Inativo
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="grupo-botao-form">
+
+          <button
+            type="submit"
+            id="btnSalvarRegistro"
+          >
+            Salvar Lançamento
+          </button>
+
+          <button
+            type="button"
+            id="btnCancelarEdicao"
+            class="botao-cancelar"
+          >
+            Cancelar Edição
+          </button>
+
+        </div>
+
+      </form>
+
+    </section>
+
+    <section class="resultado">
+
+      <h2>Relatório PDF</h2>
+
+      <div class="filtros-relatorio">
+
+        <div>
+
+          <label>Data Inicial</label>
+
+          <input
+            type="date"
+            id="dataInicialRelatorio"
+          />
+
+        </div>
+
+        <div>
+
+          <label>Data Final</label>
+
+          <input
+            type="date"
+            id="dataFinalRelatorio"
+          />
+
+        </div>
+
+        <div class="grupo-botao-relatorio">
+
+          <button id="btnGerarPDF">
+            Gerar Relatório
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <section class="resultado">
+
+      <h2>Fechamento Mensal</h2>
+
+      <div id="fechamentoMensal"></div>
+
+    </section>
+
+    <section class="resultado">
+
+      <h2>Registros</h2>
+
+      <div id="listaRegistros"></div>
+
+    </section>
+
+  </main>
+
+  <script type="module">
+
+    import { auth } from "../firebase/firebaseConfig.js";
+
+    import {
+      signOut
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+    const btnLogout = document.getElementById("btnLogout");
+
+    if (btnLogout) {
+
+      btnLogout.addEventListener("click", async () => {
+
+        try {
+
+          await signOut(auth);
+
+          window.location.href = "../login/login.html";
+
+        } catch (erro) {
+
+          console.error("Erro ao sair:", erro);
+
+          alert("Erro ao sair do sistema.");
+
+        }
+
+      });
+
+    }
+
+  </script>
+
+  <script
+    type="module"
+    src="ES.js"
+  ></script>
+
+</body>
+</html>

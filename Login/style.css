@@ -1,0 +1,313 @@
+* {
+  box-sizing: border-box;
+  font-family: Inter, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #020617;
+  color: #111827;
+}
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.22), transparent 32%),
+    linear-gradient(135deg, #020617, #0f172a 55%, #111827);
+}
+
+.login-container::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  background:
+    linear-gradient(
+      120deg,
+      transparent 20%,
+      rgba(59, 130, 246, 0.14),
+      transparent 80%
+    );
+  animation: luzExecutiva 7s ease-in-out infinite;
+}
+
+.login-container::after {
+  content: "";
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.18);
+  filter: blur(90px);
+  animation: pulsoAzul 6s ease-in-out infinite;
+}
+
+.login-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 460px;
+  padding: 42px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  animation: entradaCard 0.75s ease forwards;
+}
+
+.logo-area-login {
+  text-align: center;
+  margin-bottom: 34px;
+}
+
+.logo-area-login h1 {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 950;
+  letter-spacing: 5px;
+  color: #0f172a;
+}
+
+.logo-area-login span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 5px;
+}
+
+.logo-area-login::after {
+  content: "";
+  display: block;
+  width: 54px;
+  height: 3px;
+  margin: 18px auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #2563eb, transparent);
+  animation: linhaLogo 2.8s ease-in-out infinite;
+}
+
+.login-texto {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-texto h2 {
+  margin: 0;
+  font-size: 31px;
+  line-height: 1.1;
+  color: #020617;
+}
+
+.login-texto p {
+  margin: 12px auto 0;
+  max-width: 330px;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  margin-bottom: 9px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+}
+
+input {
+  height: 58px;
+  padding: 0 18px;
+  border-radius: 16px;
+  border: 1px solid #dbe1e8;
+  background: #f8fafc;
+  font-size: 15px;
+  color: #0f172a;
+  transition: 0.25s;
+}
+
+input::placeholder {
+  color: #94a3b8;
+}
+
+input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: white;
+  box-shadow:
+    0 0 0 5px rgba(37, 99, 235, 0.11),
+    0 10px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+button {
+  height: 58px;
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #0f172a, #1d4ed8);
+  color: white;
+  font-size: 16px;
+  font-weight: 850;
+  letter-spacing: 0.4px;
+  transition: 0.25s;
+  box-shadow: 0 18px 34px rgba(37, 99, 235, 0.28);
+  position: relative;
+  overflow: hidden;
+}
+
+button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -90%;
+  width: 70%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.28),
+    transparent
+  );
+  transform: skewX(-22deg);
+}
+
+button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 42px rgba(37, 99, 235, 0.36);
+}
+
+button:hover::before {
+  animation: brilhoBotao 0.9s ease;
+}
+
+button:active {
+  transform: scale(0.99);
+}
+
+.mensagem-erro {
+  display: none;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mensagem-erro.ativo {
+  display: block;
+  animation: erroEntrada 0.25s ease;
+}
+
+@keyframes entradaCard {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes luzExecutiva {
+  0%, 100% {
+    transform: translateX(-8%);
+    opacity: 0.45;
+  }
+
+  50% {
+    transform: translateX(8%);
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulsoAzul {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 0.8;
+  }
+}
+
+@keyframes linhaLogo {
+  0%, 100% {
+    width: 44px;
+    opacity: 0.65;
+  }
+
+  50% {
+    width: 92px;
+    opacity: 1;
+  }
+}
+
+@keyframes brilhoBotao {
+  from {
+    left: -90%;
+  }
+
+  to {
+    left: 120%;
+  }
+}
+
+@keyframes erroEntrada {
+  from {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    overflow: auto;
+  }
+
+  .login-card {
+    padding: 32px 26px;
+    border-radius: 24px;
+  }
+
+  .logo-area-login h1 {
+    font-size: 29px;
+    letter-spacing: 4px;
+  }
+
+  .login-texto h2 {
+    font-size: 27px;
+  }
+}

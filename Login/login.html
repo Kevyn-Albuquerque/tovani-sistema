@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Login | Tovani Consultoria</title>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <main class="login-container">
+
+    <section class="login-card">
+
+      <div class="logo-area-login">
+        <h1>TOVANI</h1>
+        <span>CONSULTORIA</span>
+      </div>
+
+      <div class="login-texto">
+        <h2>Acessar Sistema</h2>
+        <p>Entre com seu usuário e senha para acessar o painel financeiro.</p>
+      </div>
+
+      <form id="formLogin">
+
+        <div class="form-group">
+          <label>Usuário</label>
+          <input
+            type="text"
+            id="usuario"
+            required
+            placeholder="Digite seu usuário"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Senha</label>
+          <input
+            type="password"
+            id="senha"
+            required
+            placeholder="Digite sua senha"
+          />
+        </div>
+
+        <button type="submit">
+          Entrar
+        </button>
+
+        <p id="mensagemErro" class="mensagem-erro"></p>
+
+      </form>
+
+    </section>
+
+  </main>
+
+ <script type="module" src="login.js"></script>
+
+</body>
+</html>

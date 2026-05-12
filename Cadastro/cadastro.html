@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Cadastro de Vendas</title>
+
+  <link rel="stylesheet" href="style.css"/>
+
+  <style>
+
+    .btn-logout {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.3s;
+      margin-right: 12px;
+    }
+
+    .btn-logout:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+    }
+
+  </style>
+
+</head>
+
+<body>
+ 
+  <header class="topbar">
+
+    <div class="logo-area">
+      <h1>TOVANI</h1>
+      <span>CONSULTORIA</span>
+    </div>
+
+    <div class="usuario-area">
+
+      <div class="usuario-info">
+
+        <strong>Administrador</strong>
+
+        <small>Cadastro de Vendas</small>
+
+      </div>
+
+      <button
+        id="btnLogout"
+        class="btn-logout"
+      >
+        Sair
+      </button>
+
+      <div class="usuario-avatar">
+        T
+      </div>
+
+    </div>
+
+  </header>
+
+  <main class="container">
+
+    <section class="hero-cadastro">
+
+      <h2>Cadastro de Vendas</h2>
+
+      <p>
+        Registro de novas cotas e inclusão de clientes na carteira operacional.
+      </p>
+
+    </section>
+
+    <div class="menu">
+
+      <a href="../Dashboard/dashboard.html">
+        Dashboard
+      </a>
+
+      <a href="../Clientes/clientes.html">
+        Clientes
+      </a>
+
+      <a href="../entradaEsaida/ES.html">
+        Entrada e Saída
+      </a>
+
+    </div>
+
+    <section class="form-wrapper">
+
+      <div class="titulo-secao-form">
+
+        <h3>Nova Venda</h3>
+
+        <p>
+          Preencha os dados abaixo para registrar uma nova cota.
+        </p>
+
+      </div>
+
+      <form id="formCadastro">
+
+        <div class="form-group">
+
+          <label>Cliente</label>
+
+          <input
+            type="text"
+            id="cliente"
+            required
+            placeholder="Nome do cliente"
+          />
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Vendedor</label>
+
+          <input
+            type="text"
+            id="vendedor"
+            required
+            placeholder="Nome do vendedor"
+          />
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Cota e Grupo</label>
+
+          <input
+            type="text"
+            id="numeroCota"
+            required
+            placeholder="Ex: 10293"
+          />
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Plano</label>
+
+          <select id="plano" required>
+
+            <option value="">Selecione</option>
+
+            <option value="180">
+              180 meses
+            </option>
+
+            <option value="222">
+              222 meses
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Valor do Crédito</label>
+
+          <input
+            type="number"
+            id="valorCredito"
+            required
+            step="0.01"
+            min="0"
+            placeholder="0,00"
+          />
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Data da Venda</label>
+
+          <input
+            type="date"
+            id="dataVenda"
+            required
+          />
+
+        </div>
+
+        <div class="form-group full">
+
+          <button type="submit">
+            Salvar Venda
+          </button>
+
+        </div>
+
+      </form>
+
+    </section>
+
+    <section class="resultado">
+
+      <div class="cabecalho-historico">
+
+        <div>
+
+          <h2>Histórico de Vendas</h2>
+
+          <p>
+            Consulta rápida das últimas vendas registradas no sistema.
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="barra-pesquisa-clientes">
+
+        <input
+          type="text"
+          id="pesquisaClientes"
+          placeholder="Pesquisar cliente, vendedor, cota, plano ou valor..."
+        />
+
+        <button
+          type="button"
+          onclick="limparPesquisaClientes()"
+        >
+          Limpar
+        </button>
+
+      </div>
+
+      <div id="listaClientes"></div>
+
+    </section>
+
+  </main>
+
+  <script type="module">
+
+    import { auth } from "../firebase/firebaseConfig.js";
+
+    import {
+      signOut
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+    const btnLogout = document.getElementById("btnLogout");
+
+    if (btnLogout) {
+
+      btnLogout.addEventListener("click", async () => {
+
+        try {
+
+          await signOut(auth);
+
+          window.location.href = "../login/login.html";
+
+        } catch (erro) {
+
+          console.error("Erro ao sair:", erro);
+
+          alert("Erro ao sair do sistema.");
+
+        }
+
+      });
+
+    }
+
+  </script>
+ 
+  <script type="module" src="cadastro.js"></script>
+
+</body>
+</html>

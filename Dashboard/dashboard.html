@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Dashboard Financeiro</title>
+
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+
+    .btn-logout {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.3s;
+      margin-right: 12px;
+    }
+
+    .btn-logout:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <header class="topbar">
+
+    <div class="logo-area">
+
+      <h1>TOVANI</h1>
+
+      <span>CONSULTORIA</span>
+
+    </div>
+
+    <div class="usuario-area">
+
+      <div class="usuario-info">
+
+        <strong>Administrador</strong>
+
+        <small>Sistema Financeiro</small>
+
+      </div>
+
+      <button
+        id="btnLogout"
+        class="btn-logout"
+      >
+        Sair
+      </button>
+
+      <div class="usuario-avatar">
+        T
+      </div>
+
+    </div>
+
+  </header>
+
+  <main class="container">
+
+    <section class="hero-dashboard">
+
+      <h2>Previsão Financeira</h2>
+
+      <p>
+        Controle de faturamento, custos previstos e resultado operacional.
+      </p>
+
+    </section>
+
+    <div class="menu">
+
+      <a href="../Cadastro/cadastro.html">
+        Cadastrar Venda
+      </a>
+
+      <a href="../entradaEsaida/ES.html">
+        Entrada e Saída
+      </a>
+
+      <a href="../Clientes/clientes.html">
+        Clientes
+      </a>
+
+    </div>
+
+    <section class="cards-dashboard">
+
+      <div class="card-dashboard">
+
+        <span class="card-titulo">
+          Recebido Anteriormente
+        </span>
+
+        <p id="recebidoAnterior">
+          R$ 0,00
+        </p>
+
+      </div>
+
+      <div class="card-dashboard destaque">
+
+        <span class="card-titulo">
+          Faturamento do Mês
+        </span>
+
+        <p id="faturamentoMesAtual">
+          R$ 0,00
+        </p>
+
+      </div>
+
+      <div class="card-dashboard">
+
+        <span class="card-titulo">
+          Próximos Meses
+        </span>
+
+        <p id="receberProximos">
+          R$ 0,00
+        </p>
+
+      </div>
+
+      <div class="card-dashboard card-custo">
+
+        <span class="card-titulo">
+          Custos Previstos
+        </span>
+
+        <p id="custosPrevistos">
+          R$ 0,00
+        </p>
+
+      </div>
+
+    </section>
+
+    <section class="tabela-wrapper">
+
+      <div class="titulo-secao">
+
+        <h2>Resumo Mensal</h2>
+
+        <span>
+          Clique em “Ver detalhes” para auditar a origem do faturamento e dos custos.
+        </span>
+
+      </div>
+
+      <div id="tabelaMensal"></div>
+
+    </section>
+
+  </main>
+
+  <script type="module">
+
+    import { auth } from "../firebase/firebaseConfig.js";
+
+    import {
+      signOut
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+    const btnLogout = document.getElementById("btnLogout");
+
+    if (btnLogout) {
+
+      btnLogout.addEventListener("click", async () => {
+
+        try {
+
+          await signOut(auth);
+
+          window.location.href = "../login/login.html";
+
+        } catch (erro) {
+
+          console.error("Erro ao sair:", erro);
+
+          alert("Erro ao sair do sistema.");
+
+        }
+
+      });
+
+    }
+
+  </script>
+
+  <script
+    type="module"
+    src="dashboard.js"
+  ></script>
+
+</body>
+</html>

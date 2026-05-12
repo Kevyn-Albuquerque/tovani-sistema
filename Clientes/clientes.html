@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Clientes</title>
+
+  <link rel="stylesheet" href="style.css"/>
+
+  <style>
+
+    .btn-logout {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.3s;
+      margin-right: 12px;
+    }
+
+    .btn-logout:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <header class="topbar">
+
+    <div class="logo-area">
+
+      <h1>TOVANI</h1>
+
+      <span>CONSULTORIA</span>
+
+    </div>
+
+    <div class="usuario-area">
+
+      <div class="usuario-info">
+
+        <strong>Administrador</strong>
+
+        <small>Clientes</small>
+
+      </div>
+
+      <button
+        id="btnLogout"
+        class="btn-logout"
+      >
+        Sair
+      </button>
+
+      <div class="usuario-avatar">
+        T
+      </div>
+
+    </div>
+
+  </header>
+
+  <main class="container">
+
+    <section class="hero-clientes">
+
+      <h2>Clientes</h2>
+
+      <p>
+        Gestão operacional de clientes, cotas, contemplações, pagamentos e status da carteira.
+      </p>
+
+    </section>
+
+    <div class="menu">
+
+      <a href="../Dashboard/dashboard.html">
+        Dashboard
+      </a>
+
+      <a href="../Cadastro/cadastro.html">
+        Cadastrar Venda
+      </a>
+
+      <a href="../entradaEsaida/ES.html">
+        Entrada e Saída
+      </a>
+
+    </div>
+
+    <section class="cards-resumo-clientes">
+
+      <div class="card-resumo destaque">
+
+        <span>Valor Total Vendido</span>
+
+        <strong id="valorTotalVendido">
+          R$ 0,00
+        </strong>
+
+      </div>
+      
+      <div class="card-resumo">
+
+        <span>Total de Clientes</span>
+
+        <strong id="totalClientes">
+          0
+        </strong>
+
+      </div>
+
+      <div class="card-resumo">
+
+        <span>Cotas Cadastradas</span>
+
+        <strong id="totalCotas">
+          0
+        </strong>
+
+      </div>
+
+      <div class="card-resumo">
+
+        <span>Cotas Ativas</span>
+
+        <strong id="totalAtivas">
+          0
+        </strong>
+
+      </div>
+
+      <div class="card-resumo">
+
+        <span>Cotas Finalizadas</span>
+
+        <strong id="totalFinalizadas">
+          0
+        </strong>
+
+      </div>
+
+      <div class="card-resumo">
+
+        <span>Cotas Contempladas</span>
+
+        <strong id="totalContempladas">
+          0
+        </strong>
+
+      </div>
+
+      <div class="card-resumo alerta">
+
+        <span>Faltam Contemplar</span>
+
+        <strong id="totalFaltamContemplar">
+          0
+        </strong>
+
+      </div>
+
+      <div class="card-resumo">
+
+        <span>Valor Ativo em Carteira</span>
+
+        <strong id="valorAtivoCarteira">
+          R$ 0,00
+        </strong>
+
+      </div>
+
+    </section>
+
+    <section class="resultado">
+
+      <div class="cabecalho-lista">
+
+        <div>
+
+          <h2>Clientes e Cotas</h2>
+
+          <p>
+            Consulte, acompanhe e gerencie a situação operacional de cada cota.
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="barra-pesquisa-clientes">
+
+        <input
+          type="text"
+          id="pesquisaClientes"
+          placeholder="Pesquisar por cliente, vendedor, cota, plano, status, valor ou data..."
+        />
+
+        <button
+          type="button"
+          onclick="limparPesquisaClientes()"
+        >
+          Limpar
+        </button>
+
+      </div>
+
+      <div id="listaClientes"></div>
+
+      <div
+        id="paginacaoClientes"
+        class="paginacao-clientes"
+      ></div>
+
+    </section>
+
+  </main>
+
+  <script type="module">
+
+    import { auth } from "../firebase/firebaseConfig.js";
+
+    import {
+      signOut
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+    const btnLogout = document.getElementById("btnLogout");
+
+    if (btnLogout) {
+
+      btnLogout.addEventListener("click", async () => {
+
+        try {
+
+          await signOut(auth);
+
+          window.location.href = "../login/login.html";
+
+        } catch (erro) {
+
+          console.error("Erro ao sair:", erro);
+
+          alert("Erro ao sair do sistema.");
+
+        }
+
+      });
+
+    }
+
+  </script>
+
+  <script
+    type="module"
+    src="clientes.js"
+  ></script>
+
+</body>
+</html>
