@@ -1,17 +1,8 @@
 import { db, auth } from "../firebase/firebaseConfig.js";
 
 import {
-  onAuthStateChanged,
-  signOut
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-
-onAuthStateChanged(auth, (user) => {
-
-  if (!user) {
-    window.location.href = "../login/login.html";
-  }
-
-});
 
 import {
   collection,
@@ -65,6 +56,7 @@ function adicionarMesesTexto(dataTexto, meses) {
 function chaveMesAno(data) {
   const mes = String(data.getMonth() + 1).padStart(2, "0");
   const ano = data.getFullYear();
+
   return `${ano}-${mes}`;
 }
 
@@ -82,11 +74,17 @@ function nomeMesAno(chave) {
 
 function ehParcelaMensal(item) {
   const descricao = String(item.descricao || "").toLowerCase();
-  return descricao.includes("0.4%") || descricao.includes("0.25%");
+
+  return (
+    descricao.includes("0.4%") ||
+    descricao.includes("0.25%")
+  );
 }
 
 function ehSaldoPendente(item) {
-  return String(item.descricao || "").toLowerCase().includes("saldo pendente");
+  return String(item.descricao || "")
+    .toLowerCase()
+    .includes("saldo pendente");
 }
 
 function ehReferenciaAdiantamento(item) {
@@ -160,8 +158,13 @@ function gerarRecebimentosConsorcio() {
         ? new Date(cadastro.dataInativacao + "T00:00:00")
         : null;
 
-    const contemplado = cadastro.contemplado && cadastro.dataContemplacao;
-    const contemplacaoPaga = cadastro.contemplacaoPaga && cadastro.dataPagamentoContemplacao;
+    const contemplado =
+      cadastro.contemplado &&
+      cadastro.dataContemplacao;
+
+    const contemplacaoPaga =
+      cadastro.contemplacaoPaga &&
+      cadastro.dataPagamentoContemplacao;
 
     const dataContemplacao = contemplado
       ? new Date(cadastro.dataContemplacao + "T00:00:00")
@@ -171,14 +174,20 @@ function gerarRecebimentosConsorcio() {
       ? new Date(cadastro.dataPagamentoContemplacao + "T00:00:00")
       : null;
 
-    const mesContemplacao = contemplado ? chaveMesAno(dataContemplacao) : null;
-    const mesPagamentoContemplacao = contemplacaoPaga ? chaveMesAno(dataPagamentoContemplacao) : null;
+    const mesContemplacao = contemplado
+      ? chaveMesAno(dataContemplacao)
+      : null;
+
+    const mesPagamentoContemplacao = contemplacaoPaga
+      ? chaveMesAno(dataPagamentoContemplacao)
+      : null;
 
     let parcelasAdiantadas = 0;
-    let mesesSemReceber = 0;
 
     cadastro.calculo.fluxo.forEach(item => {
-      if (ehReferenciaAdiantamento(item)) return;
+      if (ehReferenciaAdiantamento(item)) {
+        return;
+      }
 
       if (ehSaldoPendente(item)) {
         if (contemplacaoPaga) {
@@ -198,34 +207,44 @@ function gerarRecebimentosConsorcio() {
         return;
       }
 
-      const dataOriginal = adicionarMeses(dataVenda, item.mes - 1);
+      const dataOriginal = adicionarMeses(
+        dataVenda,
+        item.mes - 1
+      );
+
       const mesOriginal = chaveMesAno(dataOriginal);
 
-      if (!ativo && dataInativacao && dataOriginal > dataInativacao) return;
+      if (
+        !ativo &&
+        dataInativacao &&
+        dataOriginal > dataInativacao
+      ) {
+        return;
+      }
 
+      // REGRA CORRETA:
+      // Ao contemplar, adianta a parcela do mês da contemplação
+      // + as 3 próximas parcelas futuras.
+      // Total: 4 parcelas antecipadas.
       if (
         contemplado &&
         ehParcelaMensal(item) &&
-        mesOriginal > mesContemplacao &&
-        mesesSemReceber < 3
+        mesOriginal >= mesContemplacao &&
+        parcelasAdiantadas < 4
       ) {
-        mesesSemReceber++;
+        parcelasAdiantadas++;
 
-        if (parcelasAdiantadas < 2) {
-          parcelasAdiantadas++;
-
-          recebimentos.push({
-            origem: "Adiantamento",
-            cliente: cadastro.cliente,
-            cota: cadastro.numeroCota,
-            vendedor: cadastro.vendedor,
-            plano: cadastro.plano,
-            data: dataContemplacao,
-            mesAno: mesContemplacao,
-            descricao: `Adiantamento ${parcelasAdiantadas}/2 - ${item.descricao}`,
-            valor: Number(item.valor) || 0
-          });
-        }
+        recebimentos.push({
+          origem: "Adiantamento",
+          cliente: cadastro.cliente,
+          cota: cadastro.numeroCota,
+          vendedor: cadastro.vendedor,
+          plano: cadastro.plano,
+          data: dataContemplacao,
+          mesAno: mesContemplacao,
+          descricao: `Adiantamento ${parcelasAdiantadas}/4 - ${item.descricao}`,
+          valor: Number(item.valor) || 0
+        });
 
         return;
       }
@@ -251,10 +270,15 @@ function gerarConsultoriasParceladas() {
   const recebimentos = [];
 
   consultoriasParceladasES.forEach(consultoria => {
-    if (consultoria.status === "inativo") return;
+    if (consultoria.status === "inativo") {
+      return;
+    }
 
     for (let i = 0; i < Number(consultoria.quantidadeParcelas || 0); i++) {
-      const dataParcela = adicionarMesesTexto(consultoria.dataPrimeiraParcela, i);
+      const dataParcela = adicionarMesesTexto(
+        consultoria.dataPrimeiraParcela,
+        i
+      );
 
       recebimentos.push({
         origem: "Consultoria parcelada",
@@ -277,7 +301,9 @@ function gerarLancamentosFinanceiros() {
   const lancamentos = [];
 
   lancamentosES.forEach(item => {
-    if (!item.data) return;
+    if (!item.data) {
+      return;
+    }
 
     const data = new Date(item.data + "T00:00:00");
     const mesAno = chaveMesAno(data);
@@ -291,9 +317,9 @@ function gerarLancamentosFinanceiros() {
       item.categoria ||
       "Lançamento financeiro";
 
-    // REGRA IMPORTANTE:
     // Comissão de ENTRADA não soma no dashboard,
-    // porque ela já está prevista pelo cadastro das cotas.
+    // porque já está prevista no cadastro das cotas.
+    // Comissão de SAÍDA continua entrando como custo.
     if (tipo === "entrada" && categoria === "comissão") {
       return;
     }
@@ -311,8 +337,6 @@ function gerarLancamentosFinanceiros() {
       return;
     }
 
-    // Comissão de SAÍDA continua entrando como custo normalmente,
-    // por exemplo comissão paga para funcionário.
     lancamentos.push({
       origem: "Saída",
       tipo: "saida",
@@ -358,7 +382,11 @@ function calcularDashboard() {
   const hoje = new Date();
   const mesAtual = chaveMesAno(hoje);
 
-  const mesBase = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const mesBase = new Date(
+    hoje.getFullYear(),
+    hoje.getMonth(),
+    1
+  );
 
   const recebimentos = [
     ...gerarRecebimentosConsorcio(),
@@ -389,9 +417,17 @@ function calcularDashboard() {
   let totalCustosPrevistos = 0;
 
   recebimentos.forEach(item => {
-    if (item.mesAno < mesAtual) totalRecebidoAnterior += item.valor;
-    if (item.mesAno === mesAtual) totalFaturamentoMesAtual += item.valor;
-    if (item.mesAno > mesAtual) totalProximos += item.valor;
+    if (item.mesAno < mesAtual) {
+      totalRecebidoAnterior += item.valor;
+    }
+
+    if (item.mesAno === mesAtual) {
+      totalFaturamentoMesAtual += item.valor;
+    }
+
+    if (item.mesAno > mesAtual) {
+      totalProximos += item.valor;
+    }
 
     if (agrupadoPorMes[item.mesAno]) {
       agrupadoPorMes[item.mesAno].comissao += item.valor;
@@ -401,9 +437,17 @@ function calcularDashboard() {
 
   lancamentosFinanceiros.forEach(item => {
     if (item.tipo === "entrada") {
-      if (item.mesAno < mesAtual) totalRecebidoAnterior += item.valor;
-      if (item.mesAno === mesAtual) totalFaturamentoMesAtual += item.valor;
-      if (item.mesAno > mesAtual) totalProximos += item.valor;
+      if (item.mesAno < mesAtual) {
+        totalRecebidoAnterior += item.valor;
+      }
+
+      if (item.mesAno === mesAtual) {
+        totalFaturamentoMesAtual += item.valor;
+      }
+
+      if (item.mesAno > mesAtual) {
+        totalProximos += item.valor;
+      }
 
       if (agrupadoPorMes[item.mesAno]) {
         agrupadoPorMes[item.mesAno].entradaExtra += item.valor;
@@ -425,15 +469,25 @@ function calcularDashboard() {
 
   Object.keys(agrupadoPorMes).forEach(mes => {
     agrupadoPorMes[mes].faturamentoTotal =
-      agrupadoPorMes[mes].comissao + agrupadoPorMes[mes].entradaExtra;
+      agrupadoPorMes[mes].comissao +
+      agrupadoPorMes[mes].entradaExtra;
 
     agrupadoPorMes[mes].resultadoPrevisto =
-      agrupadoPorMes[mes].faturamentoTotal - agrupadoPorMes[mes].custo;
+      agrupadoPorMes[mes].faturamentoTotal -
+      agrupadoPorMes[mes].custo;
   });
 
-  recebidoAnterior.textContent = formatarMoeda(totalRecebidoAnterior);
-  faturamentoMesAtual.textContent = formatarMoeda(totalFaturamentoMesAtual);
-  receberProximos.textContent = formatarMoeda(totalProximos);
+  if (recebidoAnterior) {
+    recebidoAnterior.textContent = formatarMoeda(totalRecebidoAnterior);
+  }
+
+  if (faturamentoMesAtual) {
+    faturamentoMesAtual.textContent = formatarMoeda(totalFaturamentoMesAtual);
+  }
+
+  if (receberProximos) {
+    receberProximos.textContent = formatarMoeda(totalProximos);
+  }
 
   if (custosPrevistos) {
     custosPrevistos.textContent = formatarMoeda(totalCustosPrevistos);
@@ -443,10 +497,16 @@ function calcularDashboard() {
 }
 
 function renderizarResumoClientes(detalhes) {
-  const clientes = agruparClientes(detalhes.filter(item => item.cliente));
+  const clientes = agruparClientes(
+    detalhes.filter(item => item.cliente)
+  );
 
   if (clientes.length === 0) {
-    return `<div class="detalhe-vazio">Nenhuma receita de cliente neste mês.</div>`;
+    return `
+      <div class="detalhe-vazio">
+        Nenhuma receita de cliente neste mês.
+      </div>
+    `;
   }
 
   return `
@@ -464,7 +524,11 @@ function renderizarResumoClientes(detalhes) {
 
 function renderizarDetalhesReceitas(detalhes) {
   if (detalhes.length === 0) {
-    return `<div class="detalhe-vazio">Nenhuma receita prevista para este mês.</div>`;
+    return `
+      <div class="detalhe-vazio">
+        Nenhuma receita prevista para este mês.
+      </div>
+    `;
   }
 
   return `
@@ -479,6 +543,7 @@ function renderizarDetalhesReceitas(detalhes) {
           <th>Valor</th>
         </tr>
       </thead>
+
       <tbody>
         ${detalhes.map(item => `
           <tr>
@@ -497,7 +562,11 @@ function renderizarDetalhesReceitas(detalhes) {
 
 function renderizarDetalhesCustos(detalhes) {
   if (detalhes.length === 0) {
-    return `<div class="detalhe-vazio">Nenhum custo previsto para este mês.</div>`;
+    return `
+      <div class="detalhe-vazio">
+        Nenhum custo previsto para este mês.
+      </div>
+    `;
   }
 
   return `
@@ -509,6 +578,7 @@ function renderizarDetalhesCustos(detalhes) {
           <th>Valor</th>
         </tr>
       </thead>
+
       <tbody>
         ${detalhes.map(item => `
           <tr>
@@ -526,7 +596,9 @@ function alternarDetalhesMes(mes) {
   const linha = document.getElementById(`detalhes-${mes}`);
   const botao = document.getElementById(`btn-detalhes-${mes}`);
 
-  if (!linha || !botao) return;
+  if (!linha || !botao) {
+    return;
+  }
 
   const aberta = linha.classList.contains("ativo");
 
@@ -554,17 +626,35 @@ function renderizarTabelaMensal(agrupadoPorMes, mesAtual) {
     const dados = agrupadoPorMes[mes];
 
     const classeResultado =
-      dados.resultadoPrevisto >= 0 ? "texto-positivo" : "texto-negativo";
+      dados.resultadoPrevisto >= 0
+        ? "texto-positivo"
+        : "texto-negativo";
 
     return `
       <tr class="${classeLinha}">
         <td>${nomeMesAno(mes)}</td>
         <td>${status}</td>
-        <td class="texto-positivo">${formatarMoeda(dados.comissao)}</td>
-        <td class="texto-positivo">${formatarMoeda(dados.entradaExtra)}</td>
-        <td class="texto-negativo">${formatarMoeda(dados.custo)}</td>
-        <td class="texto-positivo"><strong>${formatarMoeda(dados.faturamentoTotal)}</strong></td>
-        <td class="${classeResultado}"><strong>${formatarMoeda(dados.resultadoPrevisto)}</strong></td>
+
+        <td class="texto-positivo">
+          ${formatarMoeda(dados.comissao)}
+        </td>
+
+        <td class="texto-positivo">
+          ${formatarMoeda(dados.entradaExtra)}
+        </td>
+
+        <td class="texto-negativo">
+          ${formatarMoeda(dados.custo)}
+        </td>
+
+        <td class="texto-positivo">
+          <strong>${formatarMoeda(dados.faturamentoTotal)}</strong>
+        </td>
+
+        <td class="${classeResultado}">
+          <strong>${formatarMoeda(dados.resultadoPrevisto)}</strong>
+        </td>
+
         <td>
           <button
             class="btn-detalhes"
@@ -576,9 +666,13 @@ function renderizarTabelaMensal(agrupadoPorMes, mesAtual) {
         </td>
       </tr>
 
-      <tr class="linha-detalhes" id="detalhes-${mes}">
+      <tr
+        class="linha-detalhes"
+        id="detalhes-${mes}"
+      >
         <td colspan="8">
           <div class="painel-detalhes">
+
             <h3>Detalhamento de ${nomeMesAno(mes)}</h3>
 
             <h4>Resumo por cliente</h4>
@@ -589,35 +683,44 @@ function renderizarTabelaMensal(agrupadoPorMes, mesAtual) {
 
             <h4>Custos do mês</h4>
             ${renderizarDetalhesCustos(dados.detalhesCustos)}
+
           </div>
         </td>
       </tr>
     `;
   }).join("");
 
-  tabelaMensal.innerHTML = `
-    <table class="tabela">
-      <thead>
-        <tr>
-          <th>Mês</th>
-          <th>Status</th>
-          <th>Comissões / Consultorias</th>
-          <th>Entradas Extras</th>
-          <th>Custos</th>
-          <th>Faturamento</th>
-          <th>Resultado</th>
-          <th>Detalhes</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${linhas}
-      </tbody>
-    </table>
-  `;
+  if (tabelaMensal) {
+    tabelaMensal.innerHTML = `
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th>Mês</th>
+            <th>Status</th>
+            <th>Comissões / Consultorias</th>
+            <th>Entradas Extras</th>
+            <th>Custos</th>
+            <th>Faturamento</th>
+            <th>Resultado</th>
+            <th>Detalhes</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${linhas}
+        </tbody>
+      </table>
+    `;
+  }
 }
 
 window.alternarDetalhesMes = alternarDetalhesMes;
 
-carregarDadosFirebase();
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "../login/login.html";
+    return;
+  }
 
-
+  carregarDadosFirebase();
+});
