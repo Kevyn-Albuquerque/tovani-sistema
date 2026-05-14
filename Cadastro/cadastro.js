@@ -1,17 +1,12 @@
+/* =========================================================
+   01. IMPORTAÇÕES FIREBASE
+========================================================= */
+
 import { db, auth } from "../firebase/firebaseConfig.js";
 
 import {
-  onAuthStateChanged,
-  signOut
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-
-onAuthStateChanged(auth, (user) => {
-
-  if (!user) {
-    window.location.href = "../login/login.html";
-  }
-
-});
 
 import {
   collection,
@@ -21,6 +16,22 @@ import {
   doc
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
+
+/* =========================================================
+   02. PROTEÇÃO DE LOGIN
+========================================================= */
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "../login/login.html";
+  }
+});
+
+
+/* =========================================================
+   03. ELEMENTOS DO DOM
+========================================================= */
+
 console.log("CADASTRO FIREBASE RODANDO");
 
 const formCadastro = document.getElementById("formCadastro");
@@ -28,10 +39,23 @@ const listaClientes = document.getElementById("listaClientes");
 const pesquisaClientes = document.getElementById("pesquisaClientes");
 const paginacaoClientes = document.getElementById("paginacaoClientes");
 
-let cadastros = [];
+const quantidadeCotas = document.getElementById("quantidadeCotas");
+const listaCotasMassa = document.getElementById("listaCotasMassa");
 
+
+/* =========================================================
+   04. ESTADO DA TELA
+========================================================= */
+
+let cadastros = [];
 let paginaAtual = 1;
+
 const clientesPorPagina = 5;
+
+
+/* =========================================================
+   05. FORMATADORES
+========================================================= */
 
 function formatarMoeda(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
@@ -45,6 +69,11 @@ function formatarData(data) {
 
   return new Date(data + "T00:00:00").toLocaleDateString("pt-BR");
 }
+
+
+/* =========================================================
+   06. CÁLCULO DE COMISSÃO — PLANO 180
+========================================================= */
 
 function calcularFluxo180(valorCredito) {
   const fluxo = [];
@@ -83,6 +112,11 @@ function calcularFluxo180(valorCredito) {
   return fluxo;
 }
 
+
+/* =========================================================
+   07. CÁLCULO DE COMISSÃO — PLANO 222
+========================================================= */
+
 function calcularFluxo222(valorCredito) {
   const fluxo = [];
   const parcela025 = valorCredito * 0.0025;
@@ -113,6 +147,11 @@ function calcularFluxo222(valorCredito) {
   return fluxo;
 }
 
+
+/* =========================================================
+   08. CÁLCULO GERAL DE COMISSÃO
+========================================================= */
+
 function calcularComissao(plano, valorCredito) {
   if (plano === "180") {
     return calcularFluxo180(valorCredito);
@@ -121,10 +160,13 @@ function calcularComissao(plano, valorCredito) {
   return calcularFluxo222(valorCredito);
 }
 
+
+/* =========================================================
+   09. CARREGAR CADASTROS DO FIREBASE
+========================================================= */
+
 async function carregarCadastros() {
-
   try {
-
     const querySnapshot = await getDocs(
       collection(db, "clientes")
     );
@@ -132,112 +174,222 @@ async function carregarCadastros() {
     cadastros = [];
 
     querySnapshot.forEach((docItem) => {
-
       cadastros.push({
         firebaseId: docItem.id,
         ...docItem.data()
       });
-
     });
 
     renderizarClientes();
 
   } catch (erro) {
-
     console.error("Erro ao carregar clientes:", erro);
-
   }
-
 }
 
-formCadastro.addEventListener("submit", async function(event) {
 
+/* =========================================================
+   10. GERAR CAMPOS DE GRUPO E COTA
+========================================================= */
+
+function gerarCamposDeCotas() {
+  if (!quantidadeCotas || !listaCotasMassa) return;
+
+  const quantidade = Number(quantidadeCotas.value || 1);
+
+  if (!quantidade || quantidade < 1) {
+    listaCotasMassa.innerHTML = "";
+    return;
+  }
+
+  let html = "";
+
+  for (let i = 0; i < quantidade; i++) {
+    html += `
+      <div class="linha-cota-massa">
+
+        <div class="form-group">
+          <label>Grupo ${quantidade > 1 ? i + 1 : ""}</label>
+
+          <input
+            type="text"
+            class="grupo-massa"
+            placeholder="Ex: 45"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Cota ${quantidade > 1 ? i + 1 : ""}</label>
+
+          <input
+            type="text"
+            class="cota-massa"
+            placeholder="Ex: 10293"
+            required
+          />
+        </div>
+
+      </div>
+    `;
+  }
+
+  listaCotasMassa.innerHTML = html;
+}
+
+if (quantidadeCotas) {
+  quantidadeCotas.addEventListener("input", gerarCamposDeCotas);
+}
+
+
+/* =========================================================
+   11. CADASTRAR VENDA — UMA OU VÁRIAS COTAS
+========================================================= */
+
+formCadastro.addEventListener("submit", async function(event) {
   event.preventDefault();
 
   const cliente = document.getElementById("cliente").value.trim();
   const vendedor = document.getElementById("vendedor").value.trim();
-  const numeroCota = document.getElementById("numeroCota").value.trim();
   const plano = document.getElementById("plano").value;
   const valorCredito = Number(document.getElementById("valorCredito").value);
   const dataVenda = document.getElementById("dataVenda").value;
 
-  const fluxo = calcularComissao(plano, valorCredito);
+  const grupos = document.querySelectorAll(".grupo-massa");
+  const cotas = document.querySelectorAll(".cota-massa");
 
-  const novoCadastro = {
-    id: Date.now(),
-    cliente,
-    vendedor,
-    numeroCota,
-    plano,
-    valorCredito,
-    dataVenda,
+  if (!cliente || !vendedor || !plano || !valorCredito || !dataVenda) {
+    alert("Preencha todos os dados principais da venda.");
+    return;
+  }
 
-    contemplado: false,
-    dataContemplacao: null,
-    contemplacaoPaga: false,
-    dataPagamentoContemplacao: null,
-
-    ativo: true,
-    dataInativacao: null,
-
-    calculo: {
-      fluxo
-    },
-
-    criadoEm: new Date().toISOString()
-  };
+  if (grupos.length === 0 || cotas.length === 0) {
+    alert("Informe pelo menos um grupo e uma cota.");
+    return;
+  }
 
   try {
+    for (let i = 0; i < cotas.length; i++) {
+      const grupo = grupos[i].value.trim();
+      const numeroCota = cotas[i].value.trim();
 
-    await addDoc(
-      collection(db, "clientes"),
-      novoCadastro
-    );
+      if (!grupo || !numeroCota) {
+        alert("Preencha todos os grupos e cotas.");
+        return;
+      }
+
+      const fluxo = calcularComissao(plano, valorCredito);
+
+      const novoCadastro = {
+        id: Date.now() + i,
+
+        cliente,
+        vendedor,
+
+        grupo,
+        numeroCota,
+
+        plano,
+        valorCredito,
+        dataVenda,
+
+        contemplado: false,
+        dataContemplacao: null,
+        contemplacaoPaga: false,
+        dataPagamentoContemplacao: null,
+
+        ativo: true,
+        dataInativacao: null,
+
+        calculo: {
+          fluxo
+        },
+
+        quantidadeCotas: cotas.length,
+        cadastroEmMassa: cotas.length > 1,
+
+        criadoEm: new Date().toISOString()
+      };
+
+      await addDoc(
+        collection(db, "clientes"),
+        novoCadastro
+      );
+    }
 
     formCadastro.reset();
+
+    if (listaCotasMassa) {
+      listaCotasMassa.innerHTML = "";
+    }
 
     paginaAtual = 1;
 
     await carregarCadastros();
 
-    alert("Venda cadastrada com sucesso.");
+    alert(
+      cotas.length > 1
+        ? `${cotas.length} cotas cadastradas com sucesso.`
+        : "Venda cadastrada com sucesso."
+    );
+
+    gerarCamposDeCotas();
 
   } catch (erro) {
-
-    console.error("Erro ao salvar:", erro);
-
+    console.error("Erro ao salvar venda:", erro);
     alert("Erro ao salvar venda.");
-
   }
-
 });
 
+
+/* =========================================================
+   12. PESQUISA DE CLIENTES
+========================================================= */
+
 if (pesquisaClientes) {
-
   pesquisaClientes.addEventListener("input", function() {
-
     paginaAtual = 1;
-
     renderizarClientes();
-
   });
-
 }
 
 function limparPesquisaClientes() {
-
   if (!pesquisaClientes) return;
 
   pesquisaClientes.value = "";
-
   paginaAtual = 1;
 
   renderizarClientes();
-
 }
 
-function mudarPaginaClientes(pagina) {
+function filtrarCadastros() {
+  const termo = pesquisaClientes
+    ? pesquisaClientes.value.toLowerCase().trim()
+    : "";
 
+  if (!termo) {
+    return cadastros;
+  }
+
+  return cadastros.filter(cadastro => {
+    return (
+      String(cadastro.cliente || "").toLowerCase().includes(termo) ||
+      String(cadastro.vendedor || "").toLowerCase().includes(termo) ||
+      String(cadastro.grupo || "").toLowerCase().includes(termo) ||
+      String(cadastro.numeroCota || "").toLowerCase().includes(termo) ||
+      String(cadastro.plano || "").toLowerCase().includes(termo) ||
+      formatarMoeda(cadastro.valorCredito).toLowerCase().includes(termo) ||
+      formatarData(cadastro.dataVenda).toLowerCase().includes(termo)
+    );
+  });
+}
+
+
+/* =========================================================
+   13. PAGINAÇÃO
+========================================================= */
+
+function mudarPaginaClientes(pagina) {
   paginaAtual = pagina;
 
   renderizarClientes();
@@ -245,69 +397,14 @@ function mudarPaginaClientes(pagina) {
   const secao = document.querySelector(".resultado");
 
   if (secao) {
-
     secao.scrollIntoView({
       behavior: "smooth",
       block: "start"
     });
-
   }
-
-}
-
-async function excluirCadastro(firebaseId) {
-
-  const confirmar = confirm("Deseja excluir esta venda?");
-
-  if (!confirmar) return;
-
-  try {
-
-    await deleteDoc(
-      doc(db, "clientes", firebaseId)
-    );
-
-    await carregarCadastros();
-
-  } catch (erro) {
-
-    console.error("Erro ao excluir:", erro);
-
-    alert("Erro ao excluir venda.");
-
-  }
-
-}
-
-function filtrarCadastros() {
-
-  const termo = pesquisaClientes
-    ? pesquisaClientes.value.toLowerCase().trim()
-    : "";
-
-  if (!termo) {
-
-    return cadastros;
-
-  }
-
-  return cadastros.filter(cadastro => {
-
-    return (
-      String(cadastro.cliente || "").toLowerCase().includes(termo) ||
-      String(cadastro.vendedor || "").toLowerCase().includes(termo) ||
-      String(cadastro.numeroCota || "").toLowerCase().includes(termo) ||
-      String(cadastro.plano || "").toLowerCase().includes(termo) ||
-      formatarMoeda(cadastro.valorCredito).toLowerCase().includes(termo) ||
-      formatarData(cadastro.dataVenda).toLowerCase().includes(termo)
-    );
-
-  });
-
 }
 
 function renderizarPaginacao(totalItens) {
-
   if (!paginacaoClientes) return;
 
   const totalPaginas = Math.ceil(
@@ -315,11 +412,8 @@ function renderizarPaginacao(totalItens) {
   );
 
   if (totalPaginas <= 1) {
-
     paginacaoClientes.innerHTML = "";
-
     return;
-
   }
 
   let botoes = `
@@ -332,7 +426,6 @@ function renderizarPaginacao(totalItens) {
   `;
 
   for (let i = 1; i <= totalPaginas; i++) {
-
     botoes += `
       <button
         class="${i === paginaAtual ? "ativo" : ""}"
@@ -341,7 +434,6 @@ function renderizarPaginacao(totalItens) {
         ${i}
       </button>
     `;
-
   }
 
   botoes += `
@@ -359,15 +451,40 @@ function renderizarPaginacao(totalItens) {
   `;
 
   paginacaoClientes.innerHTML = botoes;
-
 }
 
-function renderizarClientes() {
 
+/* =========================================================
+   14. EXCLUIR CADASTRO
+========================================================= */
+
+async function excluirCadastro(firebaseId) {
+  const confirmar = confirm("Deseja excluir esta venda?");
+
+  if (!confirmar) return;
+
+  try {
+    await deleteDoc(
+      doc(db, "clientes", firebaseId)
+    );
+
+    await carregarCadastros();
+
+  } catch (erro) {
+    console.error("Erro ao excluir:", erro);
+    alert("Erro ao excluir venda.");
+  }
+}
+
+
+/* =========================================================
+   15. RENDERIZAR CLIENTES
+========================================================= */
+
+function renderizarClientes() {
   const cadastrosFiltrados = filtrarCadastros();
 
   if (cadastros.length === 0) {
-
     listaClientes.innerHTML = `
       <div class="card">
         Nenhuma venda cadastrada.
@@ -375,17 +492,13 @@ function renderizarClientes() {
     `;
 
     if (paginacaoClientes) {
-
       paginacaoClientes.innerHTML = "";
-
     }
 
     return;
-
   }
 
   if (cadastrosFiltrados.length === 0) {
-
     listaClientes.innerHTML = `
       <div class="card">
         Nenhum resultado encontrado.
@@ -393,19 +506,14 @@ function renderizarClientes() {
     `;
 
     if (paginacaoClientes) {
-
       paginacaoClientes.innerHTML = "";
-
     }
 
     return;
-
   }
 
   const ordenados = [...cadastrosFiltrados].sort((a, b) => {
-
     return Number(b.id || 0) - Number(a.id || 0);
-
   });
 
   const totalPaginas = Math.ceil(
@@ -413,19 +521,15 @@ function renderizarClientes() {
   );
 
   if (paginaAtual > totalPaginas) {
-
     paginaAtual = totalPaginas;
-
   }
 
   const inicio = (paginaAtual - 1) * clientesPorPagina;
-
   const fim = inicio + clientesPorPagina;
 
   const clientesPagina = ordenados.slice(inicio, fim);
 
   listaClientes.innerHTML = clientesPagina.map(cadastro => {
-
     return `
       <div class="card">
 
@@ -445,8 +549,13 @@ function renderizarClientes() {
               </span>
 
               <span>
+                <strong>Grupo:</strong>
+                ${cadastro.grupo || "-"}
+              </span>
+
+              <span>
                 <strong>Cota:</strong>
-                ${cadastro.numeroCota}
+                ${cadastro.numeroCota || "-"}
               </span>
 
               <span>
@@ -463,6 +572,12 @@ function renderizarClientes() {
                 <strong>Venda:</strong>
                 ${formatarData(cadastro.dataVenda)}
               </span>
+
+              ${
+                cadastro.cadastroEmMassa
+                  ? `<span><strong>Origem:</strong> Massa</span>`
+                  : ``
+              }
 
             </div>
 
@@ -483,17 +598,24 @@ function renderizarClientes() {
 
       </div>
     `;
-
   }).join("");
 
   renderizarPaginacao(ordenados.length);
-
 }
+
+
+/* =========================================================
+   16. FUNÇÕES GLOBAIS PARA O HTML
+========================================================= */
 
 window.excluirCadastro = excluirCadastro;
 window.mudarPaginaClientes = mudarPaginaClientes;
 window.limparPesquisaClientes = limparPesquisaClientes;
 
+
+/* =========================================================
+   17. INICIALIZAÇÃO DA TELA
+========================================================= */
+
 carregarCadastros();
-
-
+gerarCamposDeCotas();

@@ -6,13 +6,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 
 onAuthStateChanged(auth, (user) => {
-
   if (!user) {
     window.location.href = "../login/login.html";
   }
-
 });
-
 
 import {
   collection,
@@ -511,6 +508,7 @@ function filtrarCadastros() {
       String(cadastro.cliente || "").toLowerCase().includes(termo) ||
       String(cadastro.vendedor || "").toLowerCase().includes(termo) ||
       String(cadastro.numeroCota || "").toLowerCase().includes(termo) ||
+      String(cadastro.grupo || "").toLowerCase().includes(termo) ||
       String(cadastro.plano || "").toLowerCase().includes(termo) ||
       statusPagamento.includes(termo) ||
       statusAtivo.includes(termo) ||
@@ -521,6 +519,67 @@ function filtrarCadastros() {
       formatarData(cadastro.dataPagamentoContemplacao).toLowerCase().includes(termo) ||
       formatarData(cadastro.dataInativacao).toLowerCase().includes(termo)
     );
+  });
+}
+
+function agruparClientes(lista = []) {
+  const grupos = {};
+
+  lista.forEach(cadastro => {
+    const nomeCliente = String(cadastro.cliente || "Cliente sem nome").trim();
+    const chave = nomeCliente.toLowerCase();
+
+    if (!grupos[chave]) {
+      grupos[chave] = {
+        id: chave.replace(/[^a-z0-9]/gi, "-"),
+        nome: nomeCliente,
+        cotas: [],
+        creditoTotal: 0,
+        vendedores: new Set(),
+        planos: new Set(),
+        datasVenda: [],
+        contempladas: 0,
+        ativas: 0,
+        inativas: 0,
+        finalizadas: 0,
+        pendentesContemplacao: 0
+      };
+    }
+
+    const finalizada = cotaFinalizada(cadastro);
+
+    grupos[chave].cotas.push(cadastro);
+    grupos[chave].creditoTotal += Number(cadastro.valorCredito) || 0;
+
+    if (cadastro.vendedor) grupos[chave].vendedores.add(cadastro.vendedor);
+    if (cadastro.plano) grupos[chave].planos.add(`${cadastro.plano} meses`);
+    if (cadastro.dataVenda) grupos[chave].datasVenda.push(cadastro.dataVenda);
+
+    if (cadastro.contemplado) {
+      grupos[chave].contempladas++;
+    } else {
+      grupos[chave].pendentesContemplacao++;
+    }
+
+    if (cadastro.ativo === false) {
+      grupos[chave].inativas++;
+    } else if (finalizada) {
+      grupos[chave].finalizadas++;
+    } else {
+      grupos[chave].ativas++;
+    }
+  });
+
+  return Object.values(grupos).map(cliente => {
+    cliente.cotas.sort((a, b) => {
+      return new Date(b.dataVenda || 0) - new Date(a.dataVenda || 0);
+    });
+
+    cliente.dataMaisRecente = cliente.datasVenda.length
+      ? cliente.datasVenda.sort().reverse()[0]
+      : null;
+
+    return cliente;
   });
 }
 
@@ -563,84 +622,198 @@ function renderizarPaginacao(totalItens) {
     </button>
 
     <div class="paginacao-info">
-      Página ${paginaAtual} de ${totalPaginas} • ${totalItens} cota(s)
+      Página ${paginaAtual} de ${totalPaginas} • ${totalItens} cliente(s)
     </div>
   `;
 
   paginacaoClientes.innerHTML = botoes;
 }
 
-function renderizarClientes() {
-  calcularResumoClientes();
+function renderizarStatusCota(cadastro, finalizada) {
+  return `
+    <div class="status-linha">
+      ${
+        cadastro.ativo === false
+          ? `<div class="status-inativo">COTA INATIVA</div>`
+          : finalizada
+            ? `<div class="status-finalizada">COTA FINALIZADA</div>`
+            : `<div class="status-contemplado">COTA ATIVA</div>`
+      }
 
-  const cadastrosFiltrados = filtrarCadastros();
+      ${
+        cadastro.contemplado
+          ? `<div class="status-contemplado">CONTEMPLADA</div>`
+          : `<div class="status-pendente">FALTA CONTEMPLAR</div>`
+      }
 
-  if (cadastros.length === 0) {
-    listaClientes.innerHTML = `
-      <div class="card">
-        Nenhum cliente cadastrado.
-      </div>
-    `;
+      ${
+        cadastro.contemplado
+          ? cadastro.contemplacaoPaga
+            ? `<div class="status-contemplado">CONTEMPLAÇÃO PAGA</div>`
+            : `<div class="status-pendente">PGTO CONTEMPLAÇÃO PENDENTE</div>`
+          : ""
+      }
+    </div>
+  `;
+}
 
-    if (paginacaoClientes) {
-      paginacaoClientes.innerHTML = "";
+function renderizarAcoesCota(cadastro, finalizada) {
+  const id = cadastro.firebaseId;
+
+  return `
+    <div class="area-botoes">
+
+      ${
+        !cadastro.contemplado
+          ? `
+            <button
+              class="btn-contemplado"
+              onclick="abrirCampoContemplacao('${id}')"
+            >
+              Marcar Contemplada
+            </button>
+          `
+          : `
+            <button
+              class="btn-excluir"
+              onclick="desfazerContemplacao('${id}')"
+            >
+              Remover Contemplação
+            </button>
+          `
+      }
+
+      ${
+        cadastro.contemplado && !cadastro.contemplacaoPaga
+          ? `
+            <button
+              class="btn-contemplado"
+              onclick="abrirCampoPagamentoContemplacao('${id}')"
+            >
+              Marcar Pago
+            </button>
+          `
+          : ""
+      }
+
+      ${
+        cadastro.contemplado && cadastro.contemplacaoPaga
+          ? `
+            <button
+              class="btn-excluir"
+              onclick="desfazerPagamentoContemplacao('${id}')"
+            >
+              Remover Pgto
+            </button>
+          `
+          : ""
+      }
+
+      ${
+        cadastro.ativo === false
+          ? `
+            <button
+              class="btn-contemplado"
+              onclick="reativarCadastro('${id}')"
+            >
+              Reativar
+            </button>
+          `
+          : finalizada
+            ? ""
+            : `
+              <button
+                class="btn-inativo"
+                onclick="abrirCampoInativacao('${id}')"
+              >
+                Inativar
+              </button>
+            `
+      }
+
+      <button
+        class="btn-excluir"
+        onclick="excluirCadastro('${id}')"
+      >
+        Excluir
+      </button>
+
+    </div>
+
+    ${
+      !cadastro.contemplado
+        ? `
+          <div class="area-contemplacao-card" id="area-contemplacao-${id}">
+            <input type="date" id="data-contemplacao-${id}">
+
+            <button onclick="confirmarContemplacao('${id}')">
+              Confirmar
+            </button>
+
+            <button class="btn-cancelar" onclick="abrirCampoContemplacao('${id}')">
+              Cancelar
+            </button>
+          </div>
+        `
+        : ""
     }
 
-    return;
-  }
+    ${
+      cadastro.contemplado && !cadastro.contemplacaoPaga
+        ? `
+          <div class="area-contemplacao-card" id="area-pagamento-contemplacao-${id}">
+            <input type="date" id="data-pagamento-contemplacao-${id}">
 
-  if (cadastrosFiltrados.length === 0) {
-    listaClientes.innerHTML = `
-      <div class="card">
-        Nenhum resultado encontrado para a pesquisa.
-      </div>
-    `;
+            <button onclick="confirmarPagamentoContemplacao('${id}')">
+              Confirmar Pgto
+            </button>
 
-    if (paginacaoClientes) {
-      paginacaoClientes.innerHTML = "";
+            <button class="btn-cancelar" onclick="abrirCampoPagamentoContemplacao('${id}')">
+              Cancelar
+            </button>
+          </div>
+        `
+        : ""
     }
 
-    return;
-  }
+    ${
+      cadastro.ativo !== false && !finalizada
+        ? `
+          <div class="area-contemplacao-card" id="area-inativacao-${id}">
+            <input type="date" id="data-inativacao-${id}">
 
-  const ordenados = [...cadastrosFiltrados].reverse();
+            <button onclick="confirmarInativacao('${id}')">
+              Confirmar
+            </button>
 
-  const totalPaginas = Math.ceil(ordenados.length / clientesPorPagina);
+            <button class="btn-cancelar" onclick="abrirCampoInativacao('${id}')">
+              Cancelar
+            </button>
+          </div>
+        `
+        : ""
+    }
+  `;
+}
 
-  if (paginaAtual > totalPaginas) {
-    paginaAtual = totalPaginas;
-  }
-
-  const inicio = (paginaAtual - 1) * clientesPorPagina;
-  const fim = inicio + clientesPorPagina;
-
-  const clientesPagina = ordenados.slice(inicio, fim);
-
-  listaClientes.innerHTML = clientesPagina.map(cadastro => {
+function renderizarCotasCliente(cliente) {
+  return cliente.cotas.map(cadastro => {
     const finalizada = cotaFinalizada(cadastro);
-    const id = cadastro.firebaseId;
 
     return `
-      <div class="card">
+      <div class="cliente-cota-item">
 
-        <div class="card-topo">
+        <div class="cliente-cota-topo">
 
-          <div class="card-info">
-
-            <div class="cliente-nome">
-              ${cadastro.cliente || "-"}
-            </div>
+          <div>
+            <strong>
+              Grupo ${cadastro.grupo || "-"} — Cota ${cadastro.numeroCota || "-"}
+            </strong>
 
             <div class="linha-info">
-
               <span>
                 <strong>Vendedor:</strong>
                 ${cadastro.vendedor || "-"}
-              </span>
-
-              <span>
-                <strong>Cota:</strong>
-                ${cadastro.numeroCota || "-"}
               </span>
 
               <span>
@@ -690,171 +863,16 @@ function renderizarClientes() {
                   `
                   : ""
               }
-
             </div>
-
           </div>
 
-          <div class="card-acoes">
-
-            ${
-              cadastro.ativo === false
-                ? `<div class="status-inativo">COTA INATIVA</div>`
-                : finalizada
-                  ? `<div class="status-finalizada">COTA FINALIZADA</div>`
-                  : `<div class="status-contemplado">COTA ATIVA</div>`
-            }
-
-            ${
-              cadastro.contemplado
-                ? `<div class="status-contemplado">CONTEMPLADA</div>`
-                : `<div class="status-pendente">FALTA CONTEMPLAR</div>`
-            }
-
-            ${
-              cadastro.contemplado
-                ? cadastro.contemplacaoPaga
-                  ? `<div class="status-contemplado">CONTEMPLAÇÃO PAGA</div>`
-                  : `<div class="status-pendente">PGTO CONTEMPLAÇÃO PENDENTE</div>`
-                : ""
-            }
-
-            <div class="area-botoes">
-
-              ${
-                !cadastro.contemplado
-                  ? `
-                    <button
-                      class="btn-contemplado"
-                      onclick="abrirCampoContemplacao('${id}')"
-                    >
-                      Marcar Contemplada
-                    </button>
-                  `
-                  : `
-                    <button
-                      class="btn-excluir"
-                      onclick="desfazerContemplacao('${id}')"
-                    >
-                      Remover Contemplação
-                    </button>
-                  `
-              }
-
-              ${
-                cadastro.contemplado && !cadastro.contemplacaoPaga
-                  ? `
-                    <button
-                      class="btn-contemplado"
-                      onclick="abrirCampoPagamentoContemplacao('${id}')"
-                    >
-                      Marcar Pago
-                    </button>
-                  `
-                  : ""
-              }
-
-              ${
-                cadastro.contemplado && cadastro.contemplacaoPaga
-                  ? `
-                    <button
-                      class="btn-excluir"
-                      onclick="desfazerPagamentoContemplacao('${id}')"
-                    >
-                      Remover Pgto
-                    </button>
-                  `
-                  : ""
-              }
-
-              ${
-                cadastro.ativo === false
-                  ? `
-                    <button
-                      class="btn-contemplado"
-                      onclick="reativarCadastro('${id}')"
-                    >
-                      Reativar
-                    </button>
-                  `
-                  : finalizada
-                    ? ""
-                    : `
-                      <button
-                        class="btn-inativo"
-                        onclick="abrirCampoInativacao('${id}')"
-                      >
-                        Inativar
-                      </button>
-                    `
-              }
-
-              <button
-                class="btn-excluir"
-                onclick="excluirCadastro('${id}')"
-              >
-                Excluir
-              </button>
-
-            </div>
-
-            ${
-              !cadastro.contemplado
-                ? `
-                  <div class="area-contemplacao-card" id="area-contemplacao-${id}">
-                    <input type="date" id="data-contemplacao-${id}">
-
-                    <button onclick="confirmarContemplacao('${id}')">
-                      Confirmar
-                    </button>
-
-                    <button class="btn-cancelar" onclick="abrirCampoContemplacao('${id}')">
-                      Cancelar
-                    </button>
-                  </div>
-                `
-                : ""
-            }
-
-            ${
-              cadastro.contemplado && !cadastro.contemplacaoPaga
-                ? `
-                  <div class="area-contemplacao-card" id="area-pagamento-contemplacao-${id}">
-                    <input type="date" id="data-pagamento-contemplacao-${id}">
-
-                    <button onclick="confirmarPagamentoContemplacao('${id}')">
-                      Confirmar Pgto
-                    </button>
-
-                    <button class="btn-cancelar" onclick="abrirCampoPagamentoContemplacao('${id}')">
-                      Cancelar
-                    </button>
-                  </div>
-                `
-                : ""
-            }
-
-            ${
-              cadastro.ativo !== false && !finalizada
-                ? `
-                  <div class="area-contemplacao-card" id="area-inativacao-${id}">
-                    <input type="date" id="data-inativacao-${id}">
-
-                    <button onclick="confirmarInativacao('${id}')">
-                      Confirmar
-                    </button>
-
-                    <button class="btn-cancelar" onclick="abrirCampoInativacao('${id}')">
-                      Cancelar
-                    </button>
-                  </div>
-                `
-                : ""
-            }
-
+          <div>
+            ${renderizarStatusCota(cadastro, finalizada)}
           </div>
 
         </div>
+
+        ${renderizarAcoesCota(cadastro, finalizada)}
 
         <details class="detalhes-fluxo">
 
@@ -888,8 +906,163 @@ function renderizarClientes() {
       </div>
     `;
   }).join("");
+}
 
-  renderizarPaginacao(ordenados.length);
+function renderizarClientes() {
+  calcularResumoClientes();
+
+  if (!listaClientes) return;
+
+  const cadastrosFiltrados = filtrarCadastros();
+
+  if (cadastros.length === 0) {
+    listaClientes.innerHTML = `
+      <div class="card">
+        Nenhum cliente cadastrado.
+      </div>
+    `;
+
+    if (paginacaoClientes) {
+      paginacaoClientes.innerHTML = "";
+    }
+
+    return;
+  }
+
+  if (cadastrosFiltrados.length === 0) {
+    listaClientes.innerHTML = `
+      <div class="card">
+        Nenhum resultado encontrado para a pesquisa.
+      </div>
+    `;
+
+    if (paginacaoClientes) {
+      paginacaoClientes.innerHTML = "";
+    }
+
+    return;
+  }
+
+  const clientesAgrupados = agruparClientes(cadastrosFiltrados)
+    .sort((a, b) => {
+      return new Date(b.dataMaisRecente || 0) - new Date(a.dataMaisRecente || 0);
+    });
+
+  const totalPaginas = Math.ceil(clientesAgrupados.length / clientesPorPagina);
+
+  if (paginaAtual > totalPaginas) {
+    paginaAtual = totalPaginas;
+  }
+
+  const inicio = (paginaAtual - 1) * clientesPorPagina;
+  const fim = inicio + clientesPorPagina;
+
+  const clientesPagina = clientesAgrupados.slice(inicio, fim);
+
+  listaClientes.innerHTML = clientesPagina.map(cliente => {
+    const cotasTexto = cliente.cotas
+      .map(cota => cota.numeroCota)
+      .filter(Boolean)
+      .join(", ");
+
+    return `
+      <div class="card cliente-card-crm">
+
+        <div class="card-topo cliente-resumo-crm">
+
+          <div class="card-info">
+
+            <div class="cliente-nome">
+              ${cliente.nome}
+            </div>
+
+            <div class="linha-info">
+
+              <span>
+                <strong>Total de cotas:</strong>
+                ${cliente.cotas.length}
+              </span>
+
+              <span>
+                <strong>Crédito total:</strong>
+                ${formatarMoeda(cliente.creditoTotal)}
+              </span>
+
+              <span>
+                <strong>Vendedor(es):</strong>
+                ${[...cliente.vendedores].join(", ") || "-"}
+              </span>
+
+              <span>
+                <strong>Planos:</strong>
+                ${[...cliente.planos].join(", ") || "-"}
+              </span>
+
+              <span>
+                <strong>Última venda:</strong>
+                ${formatarData(cliente.dataMaisRecente)}
+              </span>
+
+            </div>
+
+            <div class="linha-info cotas-resumo">
+              <span>
+                <strong>Cotas:</strong>
+                ${cotasTexto || "-"}
+              </span>
+            </div>
+
+          </div>
+
+          <div class="card-acoes resumo-acoes-crm">
+
+            <div class="status-contemplado">
+              ${cliente.ativas} ativa(s)
+            </div>
+
+            ${
+              cliente.inativas > 0
+                ? `<div class="status-inativo">${cliente.inativas} inativa(s)</div>`
+                : ""
+            }
+
+            ${
+              cliente.finalizadas > 0
+                ? `<div class="status-finalizada">${cliente.finalizadas} finalizada(s)</div>`
+                : ""
+            }
+
+            <div class="status-contemplado">
+              ${cliente.contempladas} contemplada(s)
+            </div>
+
+            ${
+              cliente.pendentesContemplacao > 0
+                ? `<div class="status-pendente">${cliente.pendentesContemplacao} falta(m) contemplar</div>`
+                : ""
+            }
+
+          </div>
+
+        </div>
+
+        <details class="detalhes-cliente-crm">
+
+          <summary>
+            Ver cotas do cliente
+          </summary>
+
+          <div class="cliente-cotas-lista">
+            ${renderizarCotasCliente(cliente)}
+          </div>
+
+        </details>
+
+      </div>
+    `;
+  }).join("");
+
+  renderizarPaginacao(clientesAgrupados.length);
 }
 
 window.limparPesquisaClientes = limparPesquisaClientes;
@@ -906,7 +1079,3 @@ window.confirmarInativacao = confirmarInativacao;
 window.reativarCadastro = reativarCadastro;
 
 carregarClientesFirebase();
-
-
-
-

@@ -575,3 +575,47 @@ button:active {
   }
 
 }
+
+
+.grupo-cota {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.grupo-cota .form-group {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .grupo-cota {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.lista-cotas-massa {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.linha-cota-massa {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+.linha-cota-massa .form-group {
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+
+  .linha-cota-massa {
+    grid-template-columns: 1fr;
+  }
+
+}

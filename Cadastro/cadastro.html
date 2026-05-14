@@ -48,11 +48,8 @@
     <div class="usuario-area">
 
       <div class="usuario-info">
-
         <strong>Administrador</strong>
-
         <small>Cadastro de Vendas</small>
-
       </div>
 
       <button
@@ -105,7 +102,7 @@
         <h3>Nova Venda</h3>
 
         <p>
-          Preencha os dados abaixo para registrar uma nova cota.
+          Informe os dados da venda. Para múltiplas cotas, altere a quantidade.
         </p>
 
       </div>
@@ -134,19 +131,6 @@
             id="vendedor"
             required
             placeholder="Nome do vendedor"
-          />
-
-        </div>
-
-        <div class="form-group">
-
-          <label>Cota e Grupo</label>
-
-          <input
-            type="text"
-            id="numeroCota"
-            required
-            placeholder="Ex: 10293"
           />
 
         </div>
@@ -198,6 +182,30 @@
 
         </div>
 
+        <div class="form-group">
+
+          <label>Quantidade de Cotas</label>
+
+          <input
+            type="number"
+            id="quantidadeCotas"
+            required
+            min="1"
+            value="1"
+            placeholder="Ex: 1"
+          />
+
+        </div>
+
+        <div class="form-group full">
+
+          <div
+            id="listaCotasMassa"
+            class="lista-cotas-massa"
+          ></div>
+
+        </div>
+
         <div class="form-group full">
 
           <button type="submit">
@@ -231,7 +239,7 @@
         <input
           type="text"
           id="pesquisaClientes"
-          placeholder="Pesquisar cliente, vendedor, cota, plano ou valor..."
+          placeholder="Pesquisar cliente, vendedor, grupo, cota, plano ou valor..."
         />
 
         <button
@@ -244,6 +252,11 @@
       </div>
 
       <div id="listaClientes"></div>
+
+      <div
+        id="paginacaoClientes"
+        class="paginacao-clientes"
+      ></div>
 
     </section>
 
