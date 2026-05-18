@@ -471,22 +471,6 @@ function renderizarRegistros() {
               </div>
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
               ${
                 isFixo
                   ? `

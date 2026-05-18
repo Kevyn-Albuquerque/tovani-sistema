@@ -1,3 +1,7 @@
+/* =========================================================
+   PARTE 1 — IMPORTAÇÕES, FIREBASE, VARIÁVEIS E UTILITÁRIOS
+========================================================= */
+
 import { db, auth } from "../firebase/firebaseConfig.js";
 
 import {
@@ -17,6 +21,7 @@ const custosPrevistos = document.getElementById("custosPrevistos");
 
 let cadastros = [];
 let lancamentosES = [];
+let custosFixosES = [];
 let consultoriasParceladasES = [];
 
 function formatarMoeda(valor) {
@@ -100,10 +105,12 @@ async function carregarDadosFirebase() {
   try {
     const snapClientes = await getDocs(collection(db, "clientes"));
     const snapLancamentos = await getDocs(collection(db, "lancamentosES"));
+    const snapCustosFixos = await getDocs(collection(db, "custosFixosES"));
     const snapConsultorias = await getDocs(collection(db, "consultoriasParceladasES"));
 
     cadastros = [];
     lancamentosES = [];
+    custosFixosES = [];
     consultoriasParceladasES = [];
 
     snapClientes.forEach(docItem => {
@@ -115,6 +122,13 @@ async function carregarDadosFirebase() {
 
     snapLancamentos.forEach(docItem => {
       lancamentosES.push({
+        firebaseId: docItem.id,
+        ...docItem.data()
+      });
+    });
+
+    snapCustosFixos.forEach(docItem => {
+      custosFixosES.push({
         firebaseId: docItem.id,
         ...docItem.data()
       });
@@ -141,6 +155,11 @@ async function carregarDadosFirebase() {
     }
   }
 }
+
+
+/* =========================================================
+   PARTE 2 — GERAÇÃO DE RECEITAS, CONSULTORIAS E CUSTOS
+========================================================= */
 
 function gerarRecebimentosConsorcio() {
   const recebimentos = [];
@@ -222,10 +241,6 @@ function gerarRecebimentosConsorcio() {
         return;
       }
 
-      // REGRA CORRETA:
-      // Ao contemplar, adianta a parcela do mês da contemplação
-      // + as 3 próximas parcelas futuras.
-      // Total: 4 parcelas antecipadas.
       if (
         contemplado &&
         ehParcelaMensal(item) &&
@@ -297,6 +312,48 @@ function gerarConsultoriasParceladas() {
   return recebimentos;
 }
 
+function gerarCustosFixosDashboard() {
+  const custos = [];
+  const hoje = new Date();
+  const mesBase = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+
+  for (let offset = -3; offset <= 8; offset++) {
+    const dataMes = adicionarMeses(mesBase, offset);
+    const ano = dataMes.getFullYear();
+    const mes = String(dataMes.getMonth() + 1).padStart(2, "0");
+    const chave = `${ano}-${mes}`;
+
+    custosFixosES.forEach(custo => {
+      const dataInicio = new Date(custo.dataInicio + "T00:00:00");
+      const ultimoDiaMes = new Date(ano, Number(mes), 0).getDate();
+      const dia = Math.min(Number(custo.diaVencimento), ultimoDiaMes);
+
+      const dataCustoTexto = `${ano}-${mes}-${String(dia).padStart(2, "0")}`;
+      const dataCusto = new Date(dataCustoTexto + "T00:00:00");
+
+      if (dataCusto < dataInicio) return;
+
+      if (custo.dataFim) {
+        const dataFim = new Date(custo.dataFim + "T00:00:00");
+        if (dataCusto > dataFim) return;
+      }
+
+      if (custo.status === "inativo" && !custo.dataFim) return;
+
+      custos.push({
+        origem: "Custo fixo",
+        tipo: "saida",
+        data: dataCusto,
+        mesAno: chave,
+        descricao: custo.descricao || "Custo fixo",
+        valor: Number(custo.valor) || 0
+      });
+    });
+  }
+
+  return custos;
+}
+
 function gerarLancamentosFinanceiros() {
   const lancamentos = [];
 
@@ -317,9 +374,6 @@ function gerarLancamentosFinanceiros() {
       item.categoria ||
       "Lançamento financeiro";
 
-    // Comissão de ENTRADA não soma no dashboard,
-    // porque já está prevista no cadastro das cotas.
-    // Comissão de SAÍDA continua entrando como custo.
     if (tipo === "entrada" && categoria === "comissão") {
       return;
     }
@@ -349,6 +403,11 @@ function gerarLancamentosFinanceiros() {
 
   return lancamentos;
 }
+
+
+/* =========================================================
+   PARTE 3 — CÁLCULO DO DASHBOARD E AGRUPAMENTOS
+========================================================= */
 
 function agruparClientes(detalhes) {
   const agrupado = {};
@@ -393,7 +452,11 @@ function calcularDashboard() {
     ...gerarConsultoriasParceladas()
   ];
 
-  const lancamentosFinanceiros = gerarLancamentosFinanceiros();
+  const lancamentosFinanceiros = [
+    ...gerarLancamentosFinanceiros(),
+    ...gerarCustosFixosDashboard()
+  ];
+
   const agrupadoPorMes = {};
 
   for (let i = -3; i <= 8; i++) {
@@ -457,9 +520,9 @@ function calcularDashboard() {
       return;
     }
 
-    if (item.mesAno >= mesAtual) {
-      totalCustosPrevistos += item.valor;
-    }
+   if (item.mesAno === mesAtual) {
+  totalCustosPrevistos += item.valor;
+}
 
     if (agrupadoPorMes[item.mesAno]) {
       agrupadoPorMes[item.mesAno].custo += item.valor;
@@ -495,6 +558,11 @@ function calcularDashboard() {
 
   renderizarTabelaMensal(agrupadoPorMes, mesAtual);
 }
+
+
+/* =========================================================
+   PARTE 4 — RENDERIZAÇÃO DA TABELA, DETALHES E INICIALIZAÇÃO
+========================================================= */
 
 function renderizarResumoClientes(detalhes) {
   const clientes = agruparClientes(
