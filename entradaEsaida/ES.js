@@ -534,6 +534,25 @@ function obterLancamentosContabilizados() {
   return obterLancamentosFiltrados().filter(item => lancamentoJaVenceu(item));
 }
 
+function obterDataOrdenacaoRegistro(item) {
+  return new Date(
+    item.criadoEm ||
+    `${item.data || "1900-01-01"}T00:00:00`
+  ).getTime();
+}
+
+function ordenarRegistrosRecentes(a, b) {
+  const dataOrdenacaoB = obterDataOrdenacaoRegistro(b);
+  const dataOrdenacaoA = obterDataOrdenacaoRegistro(a);
+
+  if (dataOrdenacaoB !== dataOrdenacaoA) {
+    return dataOrdenacaoB - dataOrdenacaoA;
+  }
+
+  return new Date(`${b.data || "1900-01-01"}T00:00:00`) -
+    new Date(`${a.data || "1900-01-01"}T00:00:00`);
+}
+
 function obterChaveMesSaldo() {
   if (filtroMes.value) {
     return filtroMes.value;
@@ -602,7 +621,7 @@ function renderizarRegistros() {
   }
 
   const lancamentosHtml = dados
-    .sort((a, b) => new Date(b.data + "T00:00:00") - new Date(a.data + "T00:00:00"))
+    .sort(ordenarRegistrosRecentes)
     .map(item => {
       const isFixo = item.origem === "fixo";
       const isConsultoria = item.origem === "consultoria";
