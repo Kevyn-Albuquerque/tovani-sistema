@@ -296,18 +296,20 @@ button:hover {
 
 .card,
 .cliente-card-crm {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 26px;
-  border: 1px solid #dde5ef;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.065);
+  background:
+    linear-gradient(180deg, #ffffff, #fbfdff);
+  border-radius: 18px;
+  padding: 24px;
+  border: 1px solid #dbe4ef;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.075);
   margin-bottom: 24px;
   transition: 0.22s;
 }
 
 .card:hover,
 .cliente-card-crm:hover {
-  box-shadow: 0 24px 54px rgba(15, 23, 42, 0.10);
+  border-color: #cbd5e1;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.11);
 }
 
 .card-topo,
@@ -360,11 +362,11 @@ button:hover {
 /* STATUS */
 
 .resumo-acoes-crm {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  justify-content: stretch;
   gap: 8px;
-  max-width: 380px;
+  width: min(100%, 330px);
 }
 
 .status-linha {
@@ -381,27 +383,28 @@ button:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 25px;
-  padding: 6px 11px;
-  border-radius: 999px;
+  min-height: 30px;
+  padding: 7px 10px;
+  border-radius: 10px;
   font-size: 10px;
-  font-weight: 950;
-  letter-spacing: 0.35px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
   text-transform: uppercase;
   white-space: nowrap;
-  width: fit-content;
+  width: 100%;
+  box-shadow: none;
 }
 
 .status-contemplado {
-  background: var(--green-bg);
-  color: var(--green);
-  border: 1px solid var(--green-border);
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
 }
 
 .status-pendente {
-  background: var(--orange-bg);
-  color: var(--orange);
-  border: 1px solid var(--orange-border);
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
 }
 
 .status-inativo {
@@ -411,9 +414,9 @@ button:hover {
 }
 
 .status-finalizada {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
 }
 
 /* DETALHES CLIENTE */
@@ -456,9 +459,10 @@ button:hover {
 
 .cliente-cota-item {
   position: relative;
-  padding: 14px 16px;
+  padding: 18px;
   border-bottom: 1px solid #e5eaf0;
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, #ffffff, #fbfdff);
 }
 
 .cliente-cota-item:nth-child(even) {
@@ -569,30 +573,28 @@ button:hover {
 /* FALTA CONTEMPLAR MAIS EVIDENTE */
 
 .status-pendente {
-  background: #fff3e6;
-  color: #b93800;
-  border: 1px solid #fb923c;
-  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.08);
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+  box-shadow: none;
 }
 
-/* CONTEMPLADA MAIS SUAVE */
-
 .status-contemplado {
-  background: #ecfdf5;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
 }
 
 .status-inativo {
   background: #fef2f2;
-  color: #dc2626;
+  color: #991b1b;
   border: 1px solid #fecaca;
 }
 
 .status-finalizada {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
 }
 
 
@@ -666,39 +668,39 @@ button:hover {
 /* BOTÃO EDITAR MAIS SIMPLES */
 
 .btn-editar {
-  height: 34px;
-  min-width: 86px;
-  padding: 0 12px;
-  border-radius: 9px;
-  background: #ffffff;
-  color: var(--navy);
-  border: 1px solid #cbd5e1;
+  height: 36px;
+  min-width: 96px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  border: 1px solid #111827;
   font-size: 12px;
   font-weight: 900;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
 }
 
 .btn-editar:hover {
-  background: #f8fafc;
-  color: var(--navy);
-  transform: none;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.10);
+  background: #020617;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.22);
 }
 
 .menu-editar {
   position: absolute;
-  top: 42px;
+  top: 44px;
   right: 0;
-  width: 240px;
+  width: 250px;
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 8px;
-  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.16);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 24px 54px rgba(15, 23, 42, 0.18);
   z-index: 999;
   display: none;
 }
@@ -709,10 +711,10 @@ button:hover {
 
 .menu-editar button {
   width: 100%;
-  height: 40px;
+  height: 42px;
   background: transparent;
-  color: var(--navy);
-  border-radius: 10px;
+  color: #334155;
+  border-radius: 9px;
   box-shadow: none;
   border: none;
   display: flex;
@@ -721,25 +723,31 @@ button:hover {
   gap: 10px;
   padding: 0 10px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .menu-editar button:hover {
   background: #f8fafc;
+  color: #0f172a;
   transform: none;
   box-shadow: none;
 }
 
 .acao-verde {
-  color: var(--green) !important;
+  color: #0f172a !important;
 }
 
 .acao-laranja {
-  color: var(--orange) !important;
+  color: #475569 !important;
 }
 
 .acao-vermelha {
-  color: var(--red) !important;
+  color: #991b1b !important;
+}
+
+.menu-editar .acao-vermelha:hover {
+  background: #fef2f2;
+  color: #991b1b !important;
 }
 
 /* CAMPOS DE DATA */
@@ -747,8 +755,84 @@ button:hover {
 .area-contemplacao-card {
   display: none;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 18px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+}
+
+.area-contemplacao-card.ativa {
+  display: flex;
+}
+
+.area-contemplacao-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  color: var(--navy);
+}
+
+.area-contemplacao-card label span {
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.55px;
+  color: var(--muted);
+}
+
+.area-contemplacao-card input,
+.area-contemplacao-card select {
+  height: 40px;
+  width: 170px;
+  font-size: 13px;
+  border-radius: 10px;
+  border: 1px solid #dbe1e8;
+  padding: 0 12px;
+  background: white;
+}
+
+.area-contemplacao-card button {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  box-shadow: none;
+  background: #0f172a;
+}
+
+.btn-cancelar {
+  background: #ffffff !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.btn-pdf-cliente {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.btn-pdf-cliente:hover {
+  background: #0f172a;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.financeiro-cota {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
   gap: 10px;
   margin-top: 14px;
   padding: 14px;
@@ -757,29 +841,35 @@ button:hover {
   border: 1px solid var(--border);
 }
 
-.area-contemplacao-card.ativa {
+.financeiro-cota div {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #eef2f7;
 }
 
-.area-contemplacao-card input {
-  height: 40px;
-  width: 170px;
-  font-size: 13px;
-  border-radius: 10px;
-  border: 1px solid #dbe1e8;
-  padding: 0 12px;
+.financeiro-cota span {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  font-weight: 950;
 }
 
-.area-contemplacao-card button {
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
+.financeiro-cota strong {
+  color: var(--navy);
   font-size: 12px;
-  box-shadow: none;
+  font-weight: 950;
 }
 
-.btn-cancelar {
-  background: #64748b !important;
+.observacao-financeira {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 750;
 }
 
 /* FLUXO DISCRETO */
@@ -1002,12 +1092,117 @@ button:hover {
     width: 100%;
   }
 
+  .financeiro-cota {
+    grid-template-columns: 1fr;
+  }
+
   .area-contemplacao-card input,
+  .area-contemplacao-card select,
+  .area-contemplacao-card label,
   .area-contemplacao-card button {
     width: 100%;
   }
 
   .menu-editar {
+    width: 100%;
+  }
+}
+
+/* Refinamento da área expandida de cotas */
+
+.detalhes-cliente-crm {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #edf2f7;
+}
+
+.detalhes-cliente-crm summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #dbe4ef;
+  font-size: 12px;
+  margin-bottom: 14px;
+  transition: 0.18s;
+}
+
+.detalhes-cliente-crm summary::before {
+  margin-right: 0;
+}
+
+.detalhes-cliente-crm summary:hover {
+  background: #eef2f7;
+  border-color: #cbd5e1;
+}
+
+.cliente-cotas-lista {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, #f8fafc, #ffffff);
+}
+
+.cliente-cota-item,
+.cliente-cota-item:nth-child(even),
+.cliente-cota-item:last-child {
+  padding: 16px;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, #ffffff, #fcfdff);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
+}
+
+.cliente-cota-topo {
+  grid-template-columns: 190px 1fr auto;
+  align-items: start;
+}
+
+.cliente-cota-topo > div:first-child > strong {
+  width: 190px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.cliente-cota-topo .linha-info {
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.cliente-cota-topo .linha-info span {
+  min-height: 44px;
+}
+
+.cliente-cota-topo > div:last-child {
+  min-width: 210px;
+}
+
+.cliente-cota-topo > div:last-child .status-linha {
+  max-width: 250px;
+}
+
+@media (max-width: 700px) {
+  .cliente-cotas-lista {
+    padding: 10px;
+  }
+
+  .cliente-cota-topo {
+    grid-template-columns: 1fr;
+  }
+
+  .cliente-cota-topo > div:first-child > strong {
     width: 100%;
   }
 }

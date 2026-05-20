@@ -18,8 +18,11 @@ console.log("ES Firebase carregado");
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "../login/login.html";
+    window.location.href = "../Login/login.html";
+    return;
   }
+
+  carregarDadosFirebase();
 });
 
 const formRegistro = document.getElementById("formRegistro");
@@ -107,6 +110,71 @@ function formatarMoeda(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL"
+  });
+}
+
+function formatarValorInput(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function obterNumeroMoeda(valor) {
+  const valorNormalizado = String(valor || "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+    .replace(/[^\d.]/g, "");
+
+  return Number(valorNormalizado || 0);
+}
+
+function atualizarCampoMoeda(input) {
+  const valorBruto = input.dataset.valorBruto || "";
+
+  input.value = valorBruto
+    ? formatarValorInput(Number(valorBruto))
+    : "";
+}
+
+function aplicarMascaraMoeda(input) {
+  if (!input) return;
+
+  input.dataset.valorBruto = "";
+
+  input.addEventListener("beforeinput", function(event) {
+    const valorBruto = input.dataset.valorBruto || "";
+
+    if (event.inputType === "insertText") {
+      event.preventDefault();
+
+      if (/^\d$/.test(event.data || "")) {
+        input.dataset.valorBruto = `${valorBruto}${event.data}`;
+        atualizarCampoMoeda(input);
+      }
+
+      return;
+    }
+
+    if (
+      event.inputType === "deleteContentBackward" ||
+      event.inputType === "deleteContentForward"
+    ) {
+      event.preventDefault();
+
+      input.dataset.valorBruto = valorBruto.slice(0, -1);
+      atualizarCampoMoeda(input);
+    }
+  });
+
+  input.addEventListener("input", function() {
+    if (!input.value) {
+      input.dataset.valorBruto = "";
+      return;
+    }
+
+    input.dataset.valorBruto = String(Math.trunc(obterNumeroMoeda(input.value)));
+    atualizarCampoMoeda(input);
   });
 }
 
@@ -287,6 +355,11 @@ function definirModo(modo) {
 function limparFormulario() {
   formRegistro.reset();
 
+  document.getElementById("valor").value = "";
+  document.getElementById("valorParcelaConsultoria").value = "";
+  document.getElementById("valor").dataset.valorBruto = "";
+  document.getElementById("valorParcelaConsultoria").dataset.valorBruto = "";
+
   idEditando = null;
   tipoEditando = null;
 
@@ -319,9 +392,40 @@ function gerarMesesParaCustosFixos() {
   return meses;
 }
 
-function gerarLancamentosCustosFixos() {
+function gerarMesesCustosFixosAte(chaveFinal) {
+  const custosComInicio = custosFixos
+    .map(custo => custo.dataInicio)
+    .filter(Boolean)
+    .sort();
+
+  if (custosComInicio.length === 0 || !chaveFinal) {
+    return [];
+  }
+
+  const chaveInicial = obterMesAno(custosComInicio[0]);
+  const [anoInicial, mesInicial] = chaveInicial.split("-");
+  const [anoFinal, mesFinal] = chaveFinal.split("-");
+
+  const dataInicial = new Date(Number(anoInicial), Number(mesInicial) - 1, 1);
+  const dataFinal = new Date(Number(anoFinal), Number(mesFinal) - 1, 1);
+
+  const meses = [];
+  const dataCursor = new Date(dataInicial);
+
+  while (dataCursor <= dataFinal) {
+    const ano = dataCursor.getFullYear();
+    const mes = String(dataCursor.getMonth() + 1).padStart(2, "0");
+
+    meses.push(`${ano}-${mes}`);
+    dataCursor.setMonth(dataCursor.getMonth() + 1);
+  }
+
+  return meses;
+}
+
+function gerarLancamentosCustosFixos(mesesPersonalizados = null) {
   const lancamentosFixos = [];
-  const meses = gerarMesesParaCustosFixos();
+  const meses = mesesPersonalizados || gerarMesesParaCustosFixos();
 
   meses.forEach(chaveMes => {
     const [ano, mes] = chaveMes.split("-");
@@ -403,6 +507,19 @@ function obterTodosLancamentos() {
   ];
 }
 
+function obterTodosLancamentosParaSaldo(chaveFinal) {
+  return [
+    ...lancamentos.map(item => ({
+      ...item,
+      origem: "manual"
+    })),
+    ...gerarLancamentosCustosFixos(
+      gerarMesesCustosFixosAte(chaveFinal)
+    ),
+    ...gerarLancamentosConsultoriasParceladas()
+  ];
+}
+
 function obterLancamentosFiltrados() {
   let todos = obterTodosLancamentos();
 
@@ -417,26 +534,57 @@ function obterLancamentosContabilizados() {
   return obterLancamentosFiltrados().filter(item => lancamentoJaVenceu(item));
 }
 
+function obterChaveMesSaldo() {
+  if (filtroMes.value) {
+    return filtroMes.value;
+  }
+
+  return hojeMesAno();
+}
+
+function obterDataLimiteSaldo(chaveMes) {
+  const [ano, mes] = chaveMes.split("-");
+  const ultimoDia = new Date(Number(ano), Number(mes), 0).getDate();
+
+  return `${ano}-${mes}-${String(ultimoDia).padStart(2, "0")}`;
+}
+
+function obterLancamentosSaldoAcumulado() {
+  const chaveMesSaldo = obterChaveMesSaldo();
+  const dataLimite = obterDataLimiteSaldo(chaveMesSaldo);
+
+  return obterTodosLancamentosParaSaldo(chaveMesSaldo).filter(item => {
+    return item.data <= dataLimite && lancamentoJaVenceu(item);
+  });
+}
+
 function calcularTotais() {
   const dados = obterLancamentosContabilizados();
+  const dadosSaldo = obterLancamentosSaldoAcumulado();
 
   let entradas = 0;
   let saidas = 0;
+  let saldoAcumulado = 0;
 
   dados.forEach(item => {
     if (item.tipo === "entrada") entradas += Number(item.valor) || 0;
     if (item.tipo === "saida") saidas += Number(item.valor) || 0;
   });
 
-  const saldo = entradas - saidas;
+  dadosSaldo.forEach(item => {
+    const valor = Number(item.valor) || 0;
+
+    if (item.tipo === "entrada") saldoAcumulado += valor;
+    if (item.tipo === "saida") saldoAcumulado -= valor;
+  });
 
   totalEntradas.textContent = formatarMoeda(entradas);
   totalSaidas.textContent = formatarMoeda(saidas);
-  saldoFinal.textContent = formatarMoeda(saldo);
+  saldoFinal.textContent = formatarMoeda(saldoAcumulado);
 
   saldoFinal.classList.remove("negativo");
 
-  if (saldo < 0) {
+  if (saldoAcumulado < 0) {
     saldoFinal.classList.add("negativo");
   }
 }
@@ -796,7 +944,7 @@ formRegistro.addEventListener("submit", async function(event) {
     if (modo === "lancamento") {
       const tipo = document.getElementById("tipo").value;
       const data = document.getElementById("data").value;
-      const valor = Number(document.getElementById("valor").value);
+      const valor = obterNumeroMoeda(document.getElementById("valor").value);
 
       const dados = {
         tipo,
@@ -815,7 +963,7 @@ formRegistro.addEventListener("submit", async function(event) {
     }
 
     if (modo === "fixo") {
-      const valor = Number(document.getElementById("valor").value);
+      const valor = obterNumeroMoeda(document.getElementById("valor").value);
       const diaVencimento = Number(document.getElementById("diaVencimento").value);
       const dataInicio = document.getElementById("dataInicio").value;
       const dataFim = document.getElementById("dataFim").value;
@@ -841,7 +989,9 @@ formRegistro.addEventListener("submit", async function(event) {
 
     if (modo === "consultoria") {
       const cliente = document.getElementById("clienteConsultoria").value;
-      const valorParcela = Number(document.getElementById("valorParcelaConsultoria").value);
+      const valorParcela = obterNumeroMoeda(
+        document.getElementById("valorParcelaConsultoria").value
+      );
       const quantidadeParcelas = Number(document.getElementById("quantidadeParcelas").value);
       const dataPrimeiraParcela = document.getElementById("dataPrimeiraParcela").value;
       const status = document.getElementById("status").value;
@@ -888,7 +1038,9 @@ function editarLancamento(id) {
   document.getElementById("tipo").value = item.tipo;
   document.getElementById("descricao").value = item.descricao;
   document.getElementById("categoria").value = item.categoria;
-  document.getElementById("valor").value = item.valor;
+  document.getElementById("valor").value = formatarValorInput(item.valor);
+  document.getElementById("valor").dataset.valorBruto =
+    String(Math.trunc(Number(item.valor) || 0));
   document.getElementById("data").value = item.data;
 
   btnSalvarRegistro.textContent = "Atualizar Lançamento";
@@ -912,7 +1064,9 @@ function editarCustoFixo(id) {
 
   document.getElementById("descricao").value = item.descricao;
   document.getElementById("categoria").value = item.categoria;
-  document.getElementById("valor").value = item.valor;
+  document.getElementById("valor").value = formatarValorInput(item.valor);
+  document.getElementById("valor").dataset.valorBruto =
+    String(Math.trunc(Number(item.valor) || 0));
   document.getElementById("diaVencimento").value = item.diaVencimento;
   document.getElementById("dataInicio").value = item.dataInicio;
   document.getElementById("dataFim").value = item.dataFim || "";
@@ -940,7 +1094,10 @@ function editarConsultoriaParcelada(id) {
   document.getElementById("descricao").value = item.descricao;
   document.getElementById("categoria").value = "Consultoria";
   document.getElementById("clienteConsultoria").value = item.cliente;
-  document.getElementById("valorParcelaConsultoria").value = item.valorParcela;
+  document.getElementById("valorParcelaConsultoria").value =
+    formatarValorInput(item.valorParcela);
+  document.getElementById("valorParcelaConsultoria").dataset.valorBruto =
+    String(Math.trunc(Number(item.valorParcela) || 0));
   document.getElementById("quantidadeParcelas").value = item.quantidadeParcelas;
   document.getElementById("dataPrimeiraParcela").value = item.dataPrimeiraParcela;
   document.getElementById("status").value = item.status;
@@ -1019,6 +1176,9 @@ btnLimparFiltro.addEventListener("click", function() {
 
 btnGerarPDF.addEventListener("click", gerarPDF);
 
+aplicarMascaraMoeda(document.getElementById("valor"));
+aplicarMascaraMoeda(document.getElementById("valorParcelaConsultoria"));
+
 function gerarPDF() {
   const dataInicial = document.getElementById("dataInicialRelatorio").value;
   const dataFinal = document.getElementById("dataFinalRelatorio").value;
@@ -1083,4 +1243,3 @@ btnCancelarEdicao.style.display = "none";
 filtroMes.value = hojeMesAno();
 
 definirModo("lancamento");
-carregarDadosFirebase();

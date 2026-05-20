@@ -23,8 +23,11 @@ import {
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "../login/login.html";
+    window.location.href = "../Login/login.html";
+    return;
   }
+
+  carregarCadastros();
 });
 
 
@@ -61,6 +64,71 @@ function formatarMoeda(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL"
+  });
+}
+
+function formatarValorInput(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function obterNumeroMoeda(valor) {
+  const valorNormalizado = String(valor || "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+    .replace(/[^\d.]/g, "");
+
+  return Number(valorNormalizado || 0);
+}
+
+function atualizarCampoMoeda(input) {
+  const valorBruto = input.dataset.valorBruto || "";
+
+  input.value = valorBruto
+    ? formatarValorInput(Number(valorBruto))
+    : "";
+}
+
+function aplicarMascaraMoeda(input) {
+  if (!input) return;
+
+  input.dataset.valorBruto = "";
+
+  input.addEventListener("beforeinput", function(event) {
+    const valorBruto = input.dataset.valorBruto || "";
+
+    if (event.inputType === "insertText") {
+      event.preventDefault();
+
+      if (/^\d$/.test(event.data || "")) {
+        input.dataset.valorBruto = `${valorBruto}${event.data}`;
+        atualizarCampoMoeda(input);
+      }
+
+      return;
+    }
+
+    if (
+      event.inputType === "deleteContentBackward" ||
+      event.inputType === "deleteContentForward"
+    ) {
+      event.preventDefault();
+
+      input.dataset.valorBruto = valorBruto.slice(0, -1);
+      atualizarCampoMoeda(input);
+    }
+  });
+
+  input.addEventListener("input", function() {
+    if (!input.value) {
+      input.dataset.valorBruto = "";
+      return;
+    }
+
+    input.dataset.valorBruto = String(Math.trunc(obterNumeroMoeda(input.value)));
+    atualizarCampoMoeda(input);
   });
 }
 
@@ -252,7 +320,9 @@ formCadastro.addEventListener("submit", async function(event) {
   const cliente = document.getElementById("cliente").value.trim();
   const vendedor = document.getElementById("vendedor").value.trim();
   const plano = document.getElementById("plano").value;
-  const valorCredito = Number(document.getElementById("valorCredito").value);
+  const valorCredito = obterNumeroMoeda(
+    document.getElementById("valorCredito").value
+  );
   const dataVenda = document.getElementById("dataVenda").value;
 
   const grupos = document.querySelectorAll(".grupo-massa");
@@ -318,6 +388,7 @@ formCadastro.addEventListener("submit", async function(event) {
     }
 
     formCadastro.reset();
+    document.getElementById("valorCredito").dataset.valorBruto = "";
 
     if (listaCotasMassa) {
       listaCotasMassa.innerHTML = "";
@@ -573,12 +644,6 @@ function renderizarClientes() {
                 ${formatarData(cadastro.dataVenda)}
               </span>
 
-              ${
-                cadastro.cadastroEmMassa
-                  ? `<span><strong>Origem:</strong> Massa</span>`
-                  : ``
-              }
-
             </div>
 
           </div>
@@ -617,5 +682,5 @@ window.limparPesquisaClientes = limparPesquisaClientes;
    17. INICIALIZAÇÃO DA TELA
 ========================================================= */
 
-carregarCadastros();
 gerarCamposDeCotas();
+aplicarMascaraMoeda(document.getElementById("valorCredito"));

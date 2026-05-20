@@ -7,8 +7,11 @@ import {
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "../login/login.html";
+    window.location.href = "../Login/login.html";
+    return;
   }
+
+  carregarClientesFirebase();
 });
 
 import {
@@ -38,6 +41,39 @@ let cadastros = [];
 let paginaAtual = 1;
 
 const clientesPorPagina = 5;
+const percentualRetencaoHabiteSe = 0.06;
+const versaoFinanceiroCliente = 3;
+
+const dadosFinanceirosIniciaisClientes = [
+  {
+    cliente: "marcos azevedo",
+    numeroCota: "3455",
+    valorCredito: 280000,
+    percentualLance: 59.9000,
+    dataPagamentoCliente: "2025-10-15"
+  },
+  {
+    cliente: "marcos azevedo",
+    numeroCota: "3091",
+    valorCredito: 260000,
+    percentualLance: 62.9000,
+    dataPagamentoCliente: "2026-02-19"
+  },
+  {
+    cliente: "marcos azevedo",
+    numeroCota: "0123",
+    valorCredito: 260000,
+    percentualLance: 64.3000,
+    dataPagamentoCliente: "2026-04-15"
+  },
+  {
+    cliente: "marcos azevedo",
+    numeroCota: "0735",
+    valorCredito: 280000,
+    percentualLance: 63.2999,
+    dataPagamentoCliente: "2026-05-15"
+  }
+];
 
 async function carregarClientesFirebase() {
   try {
@@ -53,6 +89,7 @@ async function carregarClientesFirebase() {
     });
 
     await normalizarCadastrosAntigos();
+    await aplicarDadosFinanceirosIniciais();
     renderizarClientes();
 
   } catch (erro) {
@@ -114,6 +151,73 @@ async function normalizarCadastrosAntigos() {
   }
 }
 
+async function aplicarDadosFinanceirosIniciais() {
+  const atualizacoes = [];
+
+  dadosFinanceirosIniciaisClientes.forEach(dadosFinanceiros => {
+    const cadastro = cadastros.find(item => {
+      const nomeCliente = normalizarTextoBusca(item.cliente);
+      const termosCliente = normalizarTextoBusca(dadosFinanceiros.cliente)
+        .split(" ")
+        .filter(Boolean);
+
+      const mesmoCliente = termosCliente.every(termo => {
+        return nomeCliente.includes(termo);
+      });
+
+      const mesmaCota =
+        String(item.numeroCota || "").padStart(4, "0") ===
+        String(dadosFinanceiros.numeroCota).padStart(4, "0");
+
+      return mesmoCliente && mesmaCota;
+    });
+
+    if (
+      !cadastro ||
+      cadastro.versaoFinanceiroCliente === versaoFinanceiroCliente
+    ) {
+      return;
+    }
+
+    const valorLance =
+      dadosFinanceiros.valorCredito *
+      (dadosFinanceiros.percentualLance / 100);
+
+    const dadosAtualizar = {
+      valorCredito: dadosFinanceiros.valorCredito,
+      contemplado: true,
+      dataContemplacao: cadastro.dataContemplacao || dadosFinanceiros.dataPagamentoCliente,
+      contemplacaoPaga: true,
+      dataPagamentoContemplacao:
+        cadastro.dataPagamentoContemplacao || dadosFinanceiros.dataPagamentoCliente,
+      percentualLance: dadosFinanceiros.percentualLance,
+      valorLance,
+      dataPagamentoCliente: dadosFinanceiros.dataPagamentoCliente,
+      financeiroClienteImportado: true,
+      versaoFinanceiroCliente
+    };
+
+    Object.assign(cadastro, dadosAtualizar);
+
+    atualizacoes.push(
+      atualizarClienteFirebase(cadastro.firebaseId, dadosAtualizar)
+    );
+  });
+
+  if (atualizacoes.length > 0) {
+    await Promise.all(atualizacoes);
+  }
+}
+
+function normalizarTextoBusca(texto) {
+  return String(texto || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 function formatarMoeda(valor) {
   return Number(valor || 0).toLocaleString("pt-BR", {
     style: "currency",
@@ -124,6 +228,55 @@ function formatarMoeda(valor) {
 function formatarData(data) {
   if (!data) return "-";
   return new Date(data + "T00:00:00").toLocaleDateString("pt-BR");
+}
+
+function formatarPercentual(valor) {
+  if (valor === undefined || valor === null || valor === "") return "-";
+
+  return `${Number(valor).toLocaleString("pt-BR", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4
+  })}%`;
+}
+
+function obterNumeroPercentual(valor) {
+  const texto = String(valor || "")
+    .replace("%", "")
+    .trim();
+
+  const valorNormalizado = texto.includes(",")
+    ? texto
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .replace(/[^\d.]/g, "")
+    : texto.replace(/[^\d.]/g, "");
+
+  return Number(valorNormalizado || 0);
+}
+
+function calcularValorBaseRecebimento(cadastro) {
+  return Number(cadastro.valorCredito || 0);
+}
+
+function calcularValorLance(cadastro) {
+  if (
+    cadastro.valorLance !== undefined &&
+    cadastro.valorLance !== null &&
+    cadastro.valorLance !== ""
+  ) {
+    return Number(cadastro.valorLance) || 0;
+  }
+
+  return calcularValorBaseRecebimento(cadastro) *
+    ((Number(cadastro.percentualLance) || 0) / 100);
+}
+
+function calcularValorRecebidoCliente(cadastro) {
+  return calcularValorBaseRecebimento(cadastro) - calcularValorLance(cadastro);
+}
+
+function calcularValorRetidoHabiteSe(cadastro) {
+  return calcularValorBaseRecebimento(cadastro) * percentualRetencaoHabiteSe;
 }
 
 function dataHojeInput() {
@@ -263,21 +416,34 @@ async function excluirCadastro(firebaseId) {
 
 function abrirCampoContemplacao(firebaseId) {
   const area = document.getElementById(`area-contemplacao-${firebaseId}`);
+  const cadastro = cadastros.find(item => item.firebaseId === firebaseId);
 
   if (!area) return;
 
+  fecharMenusEditar();
   area.classList.toggle("ativa");
 
   const input = document.getElementById(`data-contemplacao-${firebaseId}`);
+  const forma = document.getElementById(`forma-pagamento-contemplacao-${firebaseId}`);
+  const lance = document.getElementById(`lance-contemplacao-${firebaseId}`);
 
   if (input && !input.value) {
-    input.value = dataHojeInput();
+    input.value = cadastro?.dataContemplacao || dataHojeInput();
+  }
+
+  if (forma && !forma.value && cadastro?.formaPagamentoContemplacao) {
+    forma.value = cadastro.formaPagamentoContemplacao;
+  }
+
+  if (lance && !lance.value && cadastro?.percentualLance !== undefined) {
+    lance.value = formatarPercentual(cadastro.percentualLance);
   }
 }
 
 function confirmarContemplacao(firebaseId) {
   const input = document.getElementById(`data-contemplacao-${firebaseId}`);
   const forma = document.getElementById(`forma-pagamento-contemplacao-${firebaseId}`);
+  const lance = document.getElementById(`lance-contemplacao-${firebaseId}`);
 
   if (!input || !input.value) {
     alert("Informe a data da contemplação.");
@@ -289,10 +455,25 @@ function confirmarContemplacao(firebaseId) {
     return;
   }
 
-  marcarContemplado(firebaseId, input.value, forma.value);
+  if (!lance || !lance.value) {
+    alert("Informe o percentual do lance.");
+    return;
+  }
+
+  marcarContemplado(
+    firebaseId,
+    input.value,
+    forma.value,
+    obterNumeroPercentual(lance.value)
+  );
 }
 
-async function marcarContemplado(firebaseId, dataContemplacao, formaPagamentoContemplacao) {
+async function marcarContemplado(
+  firebaseId,
+  dataContemplacao,
+  formaPagamentoContemplacao,
+  percentualLance
+) {
   try {
     const cadastro = cadastros.find(item => item.firebaseId === firebaseId);
 
@@ -303,17 +484,23 @@ async function marcarContemplado(firebaseId, dataContemplacao, formaPagamentoCon
         ? dataContemplacao
         : calcularDataQuartaParcela(dataContemplacao);
 
+    const valorLance = calcularValorBaseRecebimento(cadastro) *
+      ((Number(percentualLance) || 0) / 100);
+
     await atualizarClienteFirebase(firebaseId, {
       contemplado: true,
       dataContemplacao,
       formaPagamentoContemplacao,
       contemplacaoPaga: true,
-      dataPagamentoContemplacao
+      dataPagamentoContemplacao,
+      dataPagamentoCliente: dataPagamentoContemplacao,
+      percentualLance,
+      valorLance
     });
 
     await carregarClientesFirebase();
 
-    alert("Cota marcada como contemplada.");
+    alert("Dados de contemplação salvos.");
 
   } catch (erro) {
     console.error("Erro ao marcar contemplação:", erro);
@@ -360,6 +547,7 @@ function abrirCampoPagamentoContemplacao(firebaseId) {
 
   if (!area) return;
 
+  fecharMenusEditar();
   area.classList.toggle("ativa");
 
   const input = document.getElementById(`data-pagamento-contemplacao-${firebaseId}`);
@@ -432,6 +620,7 @@ function abrirCampoInativacao(firebaseId) {
 
   if (!area) return;
 
+  fecharMenusEditar();
   area.classList.toggle("ativa");
 
   const input = document.getElementById(`data-inativacao-${firebaseId}`);
@@ -503,6 +692,246 @@ function renderizarFluxo(fluxo = []) {
       </tr>
     `;
   }).join("");
+}
+
+function renderizarFinanceiroContemplacao(cadastro) {
+  if (!cadastro.contemplado) {
+    return "";
+  }
+
+  const valorRetidoHabiteSe = calcularValorRetidoHabiteSe(cadastro);
+  const valorLance = calcularValorLance(cadastro);
+  const valorRecebidoCliente = calcularValorRecebidoCliente(cadastro);
+
+  return `
+    <div class="financeiro-cota">
+      <div>
+        <span>Valor base da cota</span>
+        <strong>${formatarMoeda(calcularValorBaseRecebimento(cadastro))}</strong>
+      </div>
+
+      <div>
+        <span>Habite-se (6%)</span>
+        <strong>${formatarMoeda(valorRetidoHabiteSe)}</strong>
+      </div>
+
+      <div>
+        <span>Valor do lance</span>
+        <strong>${formatarMoeda(valorLance)}</strong>
+      </div>
+
+      <div>
+        <span>Lance (%)</span>
+        <strong>${formatarPercentual(cadastro.percentualLance)}</strong>
+      </div>
+
+      <div>
+        <span>Valor líquido recebido</span>
+        <strong>${formatarMoeda(valorRecebidoCliente)}</strong>
+      </div>
+
+      <div>
+        <span>Data de pagamento ao cliente</span>
+        <strong>${formatarData(cadastro.dataPagamentoCliente || cadastro.dataPagamentoContemplacao)}</strong>
+      </div>
+    </div>
+
+    <p class="observacao-financeira">
+      Valor líquido recebido pelo cliente = valor da cota menos valor do lance.
+      Habite-se representa 6% do valor da cota.
+    </p>
+  `;
+}
+
+function gerarPdfCliente(clienteId) {
+  const cliente = agruparClientes(cadastros)
+    .find(item => item.id === clienteId);
+
+  if (!cliente) {
+    alert("Cliente não encontrado para gerar PDF.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf || {};
+
+  if (!jsPDF) {
+    alert("Biblioteca de PDF não carregada.");
+    return;
+  }
+
+  const docPdf = new jsPDF();
+
+  const cotasContempladasLista = cliente.cotas
+    .filter(cota => cota.contemplado)
+    .sort((a, b) => {
+      return new Date(a.dataContemplacao || a.dataPagamentoCliente || 0) -
+        new Date(b.dataContemplacao || b.dataPagamentoCliente || 0);
+    });
+
+  const cotasNaoContempladasLista = cliente.cotas
+    .filter(cota => !cota.contemplado)
+    .sort((a, b) => {
+      return String(a.numeroCota || "").localeCompare(
+        String(b.numeroCota || ""),
+        "pt-BR",
+        { numeric: true }
+      );
+    });
+
+  if (cotasContempladasLista.length === 0) {
+    alert("Este cliente ainda não possui cotas contempladas para relatório.");
+    return;
+  }
+
+  const totalRetido = cotasContempladasLista.reduce((total, cota) => {
+    return total + calcularValorRetidoHabiteSe(cota);
+  }, 0);
+
+  const totalLance = cotasContempladasLista.reduce((total, cota) => {
+    return total + calcularValorLance(cota);
+  }, 0);
+
+  const totalRecebido = cotasContempladasLista.reduce((total, cota) => {
+    return total + calcularValorRecebidoCliente(cota);
+  }, 0);
+
+  const cotasContempladas = cotasContempladasLista.length;
+  const creditoContemplado = cotasContempladasLista.reduce((total, cota) => {
+    return total + calcularValorBaseRecebimento(cota);
+  }, 0);
+
+  const corBordo = [69, 10, 10];
+
+  docPdf.setFillColor(...corBordo);
+  docPdf.rect(0, 0, 210, 25, "F");
+
+  docPdf.setTextColor(255, 255, 255);
+  docPdf.setFontSize(18);
+  docPdf.setFont(undefined, "bold");
+  docPdf.text("TOVANI CONSULTORIA", 105, 16, { align: "center" });
+
+  docPdf.setTextColor(17, 24, 39);
+  docPdf.setFontSize(16);
+  docPdf.text("Relatório do Cliente", 14, 38);
+
+  docPdf.setFont(undefined, "normal");
+  docPdf.setFontSize(10);
+  docPdf.text(`Cliente: ${cliente.nome}`, 14, 48);
+  docPdf.text(`Cotas contempladas no relatório: ${cotasContempladas}`, 14, 55);
+  docPdf.text(`Crédito contemplado: ${formatarMoeda(creditoContemplado)}`, 14, 62);
+  docPdf.text(`Habite-se (6%): ${formatarMoeda(totalRetido)}`, 108, 48);
+  docPdf.text(`Total de lances: ${formatarMoeda(totalLance)}`, 108, 55);
+  docPdf.text(`Valor líquido recebido: ${formatarMoeda(totalRecebido)}`, 108, 62);
+
+  docPdf.autoTable({
+    startY: 73,
+    theme: "striped",
+    head: [[
+      "Grupo",
+      "Cota",
+      "Crédito",
+      "Contemplação",
+      "Lance %",
+      "Valor lance",
+      "Pagamento",
+      "Habite-se 6%",
+      "Líquido"
+    ]],
+    body: cotasContempladasLista.map(cota => [
+      cota.grupo || "-",
+      cota.numeroCota || "-",
+      formatarMoeda(cota.valorCredito),
+      formatarData(cota.dataContemplacao),
+      formatarPercentual(cota.percentualLance),
+      formatarMoeda(calcularValorLance(cota)),
+      formatarData(cota.dataPagamentoCliente || cota.dataPagamentoContemplacao),
+      formatarMoeda(calcularValorRetidoHabiteSe(cota)),
+      formatarMoeda(calcularValorRecebidoCliente(cota))
+    ]),
+    styles: {
+      fontSize: 8.5,
+      cellPadding: 3,
+      textColor: [31, 41, 55],
+      lineColor: [229, 231, 235],
+      lineWidth: 0.1,
+      valign: "middle"
+    },
+    headStyles: {
+      fillColor: corBordo,
+      textColor: [255, 255, 255],
+      fontStyle: "bold"
+    },
+    alternateRowStyles: {
+      fillColor: [249, 250, 251]
+    },
+    columnStyles: {
+      0: { cellWidth: 16 },
+      1: { cellWidth: 15 },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 24 },
+      4: { cellWidth: 18 },
+      5: { cellWidth: 25 },
+      6: { cellWidth: 24 },
+      7: { cellWidth: 24 },
+      8: { cellWidth: 25 }
+    },
+    margin: { left: 10, right: 10 }
+  });
+
+  if (cotasNaoContempladasLista.length > 0) {
+    const yCotasPendentes = docPdf.lastAutoTable.finalY + 12;
+
+    docPdf.setTextColor(17, 24, 39);
+    docPdf.setFontSize(13);
+    docPdf.setFont(undefined, "bold");
+    docPdf.text("Cotas a contemplar", 14, yCotasPendentes);
+
+    docPdf.autoTable({
+      startY: yCotasPendentes + 6,
+      theme: "striped",
+      head: [[
+        "Grupo",
+        "Cota",
+        "Crédito",
+        "Plano",
+        "Venda",
+        "Status"
+      ]],
+      body: cotasNaoContempladasLista.map(cota => [
+        cota.grupo || "-",
+        cota.numeroCota || "-",
+        formatarMoeda(cota.valorCredito),
+        cota.plano ? `${cota.plano} meses` : "-",
+        formatarData(cota.dataVenda),
+        "A contemplar"
+      ]),
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        textColor: [31, 41, 55],
+        lineColor: [229, 231, 235],
+        lineWidth: 0.1
+      },
+      headStyles: {
+        fillColor: corBordo,
+        textColor: [255, 255, 255],
+        fontStyle: "bold"
+      },
+      alternateRowStyles: {
+        fillColor: [249, 250, 251]
+      },
+      margin: { left: 14, right: 14 }
+    });
+  }
+
+  const nomeArquivo = cliente.nome
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  docPdf.save(`relatorio-${nomeArquivo || "cliente"}.pdf`);
 }
 
 function filtrarCadastros() {
@@ -704,6 +1133,10 @@ function renderizarAcoesCota(cadastro, finalizada) {
               </button>
             `
             : `
+              <button class="acao-verde" onclick="abrirCampoContemplacao('${id}')">
+                Editar Contemplação
+              </button>
+
               <button class="acao-vermelha" onclick="desfazerContemplacao('${id}')">
                 Remover Contemplação
               </button>
@@ -734,30 +1167,49 @@ function renderizarAcoesCota(cadastro, finalizada) {
 
     </div>
 
-    ${
-      !cadastro.contemplado
-        ? `
-          <div class="area-contemplacao-card" id="area-contemplacao-${id}">
+    <div class="area-contemplacao-card" id="area-contemplacao-${id}">
 
-            <input type="date" id="data-contemplacao-${id}">
+      <label>
+        <span>Data contemplação</span>
+        <input
+          type="date"
+          id="data-contemplacao-${id}"
+          value="${cadastro.dataContemplacao || ""}"
+        >
+      </label>
 
-            <select id="forma-pagamento-contemplacao-${id}">
-              <option value="">Forma de pagamento</option>
-              <option value="avista">À vista</option>
-              <option value="parcelado">Parcelado em 4x</option>
-            </select>
+      <label>
+        <span>Pagamento</span>
+        <select id="forma-pagamento-contemplacao-${id}">
+          <option value="">Forma de pagamento</option>
+          <option value="avista" ${cadastro.formaPagamentoContemplacao === "avista" ? "selected" : ""}>
+            À vista
+          </option>
+          <option value="parcelado" ${cadastro.formaPagamentoContemplacao === "parcelado" ? "selected" : ""}>
+            Parcelado em 4x
+          </option>
+        </select>
+      </label>
 
-            <button onclick="confirmarContemplacao('${id}')">
-              Confirmar
-            </button>
+      <label>
+        <span>Lance (%)</span>
+        <input
+          type="text"
+          id="lance-contemplacao-${id}"
+          inputmode="decimal"
+          placeholder="Ex: 59,9000%"
+          value="${cadastro.percentualLance !== undefined ? formatarPercentual(cadastro.percentualLance) : ""}"
+        >
+      </label>
 
-            <button class="btn-cancelar" onclick="abrirCampoContemplacao('${id}')">
-              Cancelar
-            </button>Rr
-          </div>
-        `
-        : ""
-    }
+      <button onclick="confirmarContemplacao('${id}')">
+        Salvar
+      </button>
+
+      <button class="btn-cancelar" onclick="abrirCampoContemplacao('${id}')">
+        Cancelar
+      </button>
+    </div>
 
     ${
       cadastro.ativo !== false && !finalizada
@@ -779,7 +1231,17 @@ function renderizarAcoesCota(cadastro, finalizada) {
   `;
 }
 
+function fecharMenusEditar() {
+  document.querySelectorAll(".menu-editar").forEach(menu => {
+    menu.classList.remove("ativo");
+  });
+}
+
 function toggleMenuEditar(firebaseId) {
+  document.querySelectorAll(".area-contemplacao-card").forEach(area => {
+    area.classList.remove("ativa");
+  });
+
   document.querySelectorAll(".menu-editar").forEach(menu => {
     if (menu.id !== `menu-editar-${firebaseId}`) {
       menu.classList.remove("ativo");
@@ -891,6 +1353,7 @@ function renderizarCotasCliente(cliente) {
           </div>
 
           ${renderizarAcoesCota(cadastro, finalizada)}
+          ${renderizarFinanceiroContemplacao(cadastro)}
 
           <details class="detalhes-fluxo">
 
@@ -1034,6 +1497,13 @@ function renderizarClientes() {
 
           <div class="card-acoes resumo-acoes-crm">
 
+            <button
+              class="btn-pdf-cliente"
+              onclick="gerarPdfCliente('${cliente.id}')"
+            >
+              Gerar PDF
+            </button>
+
             <div class="status-contemplado">
               ${cliente.ativas} ativa(s)
             </div>
@@ -1096,5 +1566,5 @@ window.abrirCampoInativacao = abrirCampoInativacao;
 window.confirmarInativacao = confirmarInativacao;
 window.reativarCadastro = reativarCadastro;
 window.toggleMenuEditar = toggleMenuEditar;
-
-carregarClientesFirebase();
+window.fecharMenusEditar = fecharMenusEditar;
+window.gerarPdfCliente = gerarPdfCliente;

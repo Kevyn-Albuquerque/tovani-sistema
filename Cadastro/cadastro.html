@@ -160,11 +160,10 @@
           <label>Valor do Crédito</label>
 
           <input
-            type="number"
+            type="text"
             id="valorCredito"
             required
-            step="0.01"
-            min="0"
+            inputmode="numeric"
             placeholder="0,00"
           />
 
@@ -280,7 +279,7 @@
 
           await signOut(auth);
 
-          window.location.href = "../login/login.html";
+          window.location.href = "../Login/login.html";
 
         } catch (erro) {
 

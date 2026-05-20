@@ -786,7 +786,7 @@ window.alternarDetalhesMes = alternarDetalhesMes;
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "../login/login.html";
+    window.location.href = "../Login/login.html";
     return;
   }
 
