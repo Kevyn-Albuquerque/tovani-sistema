@@ -157,6 +157,13 @@ body {
   box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
 }
 
+.menu a.ativo {
+  background: #0f172a;
+  color: white;
+  border-color: #0f172a;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+}
+
 /* CARDS */
 
 .cards-dashboard {

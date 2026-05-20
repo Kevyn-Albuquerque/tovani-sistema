@@ -158,6 +158,13 @@ body {
   transform: translateY(-2px);
 }
 
+.menu a.ativo {
+  background: var(--navy-2);
+  color: white;
+  border-color: var(--navy-2);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+}
+
 /* RESUMO */
 
 .cards-resumo-clientes {
