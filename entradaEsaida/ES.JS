@@ -5,15 +5,6 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 
-onAuthStateChanged(auth, (user) => {
-
-  if (!user) {
-    window.location.href = "../login/login.html";
-  }
-
-});
-
-
 import {
   collection,
   addDoc,
@@ -24,6 +15,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
 console.log("ES Firebase carregado");
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "../login/login.html";
+  }
+});
 
 const formRegistro = document.getElementById("formRegistro");
 const listaRegistros = document.getElementById("listaRegistros");
@@ -170,6 +167,24 @@ function hojeMesAno() {
   const ano = hoje.getFullYear();
 
   return `${ano}-${mes}`;
+}
+
+function dataHojeTexto() {
+  const hoje = new Date();
+
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+
+  return `${ano}-${mes}-${dia}`;
+}
+
+function lancamentoJaVenceu(item) {
+  if (item.origem !== "fixo") {
+    return true;
+  }
+
+  return item.data <= dataHojeTexto();
 }
 
 function mostrarCampo(campo, mostrar) {
@@ -398,8 +413,12 @@ function obterLancamentosFiltrados() {
   return todos;
 }
 
+function obterLancamentosContabilizados() {
+  return obterLancamentosFiltrados().filter(item => lancamentoJaVenceu(item));
+}
+
 function calcularTotais() {
-  const dados = obterLancamentosFiltrados();
+  const dados = obterLancamentosContabilizados();
 
   let entradas = 0;
   let saidas = 0;
@@ -435,10 +454,11 @@ function renderizarRegistros() {
   }
 
   const lancamentosHtml = dados
-    .sort((a, b) => new Date(b.data) - new Date(a.data))
+    .sort((a, b) => new Date(b.data + "T00:00:00") - new Date(a.data + "T00:00:00"))
     .map(item => {
       const isFixo = item.origem === "fixo";
       const isConsultoria = item.origem === "consultoria";
+      const vencido = lancamentoJaVenceu(item);
 
       return `
         <div class="card">
@@ -452,11 +472,14 @@ function renderizarRegistros() {
               <p>Data: ${formatarData(item.data)}</p>
 
               ${
-                isFixo
-                  ? `<p><strong>Custo fixo automático</strong></p>`
-                  : isConsultoria
-                    ? `<p><strong>Consultoria parcelada automática</strong></p>`
-                    : `<p><strong>Lançamento manual</strong></p>`
+                isFixo && !vencido
+                  ? `<p><strong>Vencimento dia ${formatarData(item.data)}</strong></p>
+                     <p style="color:#64748b;"><strong>Previsto — ainda não contabilizado no saldo.</strong></p>`
+                  : isFixo
+                    ? `<p><strong>Custo fixo automático contabilizado</strong></p>`
+                    : isConsultoria
+                      ? `<p><strong>Consultoria parcelada automática</strong></p>`
+                      : `<p><strong>Lançamento manual</strong></p>`
               }
 
               <span class="${item.tipo === "entrada" ? "tag-entrada" : "tag-saida"}">
@@ -470,6 +493,13 @@ function renderizarRegistros() {
                 ${formatarMoeda(item.valor)}
               </div>
 
+              ${
+                isFixo && !vencido
+                  ? `<small style="display:block;margin-top:8px;color:#64748b;font-weight:700;">
+                      Não entrou no total
+                    </small>`
+                  : ""
+              }
 
               ${
                 isFixo
@@ -516,7 +546,7 @@ function renderizarRegistros() {
 }
 
 function renderizarFechamentoMensal() {
-  const dados = obterTodosLancamentos();
+  const dados = obterTodosLancamentos().filter(item => lancamentoJaVenceu(item));
   const agrupado = {};
 
   dados.forEach(item => {
@@ -598,7 +628,7 @@ function renderizarFechamentoMensal() {
 }
 
 function renderizarGrafico() {
-  const dados = obterLancamentosFiltrados();
+  const dados = obterLancamentosContabilizados();
   const agrupado = {};
 
   dados.forEach(item => {
@@ -747,14 +777,6 @@ function renderizarGrafico() {
     }
   });
 }
-
-
-
-
-
-
-
-
 
 function renderizarTudo() {
   calcularTotais();
@@ -1007,7 +1029,7 @@ function gerarPDF() {
   }
 
   const filtrados = obterTodosLancamentos().filter(item => {
-    return item.data >= dataInicial && item.data <= dataFinal;
+    return item.data >= dataInicial && item.data <= dataFinal && lancamentoJaVenceu(item);
   });
 
   if (filtrados.length === 0) {
@@ -1062,6 +1084,3 @@ filtroMes.value = hojeMesAno();
 
 definirModo("lancamento");
 carregarDadosFirebase();
-
-
-
