@@ -541,7 +541,22 @@ function obterDataOrdenacaoRegistro(item) {
   ).getTime();
 }
 
+function obterPrioridadeHistorico(item) {
+  if (item.origem === "manual") return 1;
+  if (item.origem === "consultoria") return 2;
+  if (item.origem === "fixo") return 3;
+
+  return 4;
+}
+
 function ordenarRegistrosRecentes(a, b) {
+  const prioridadeA = obterPrioridadeHistorico(a);
+  const prioridadeB = obterPrioridadeHistorico(b);
+
+  if (prioridadeA !== prioridadeB) {
+    return prioridadeA - prioridadeB;
+  }
+
   const dataOrdenacaoB = obterDataOrdenacaoRegistro(b);
   const dataOrdenacaoA = obterDataOrdenacaoRegistro(a);
 
